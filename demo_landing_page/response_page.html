@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Albedo — LEED pre-compliance assistant</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+        <defs>
+          <linearGradient id="albedoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#0ea5a3;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#0f766e;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#065f46;stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <circle cx="24" cy="24" r="20" fill="url(#albedoGradient)"/>
+        <path d="M12 24c0-6.6 5.4-12 12-12s12 5.4 12 12" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M18 30c2-4 6-6 10-6s8 2 10 6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <circle cx="24" cy="24" r="3" fill="#fff"/>
+        <path d="M20 20l8 8M28 20l-8 8" stroke="#0f766e" stroke-width="1" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <h1>Albedo</h1>
+        <p class="tag">AI-powered LEED pre-compliance, error detection & recommendations</p>
+      </div>
+    </div>
+    <nav>
+      <a href="#about">About</a>
+      <a href="#features">Features</a>
+      <a href="#demo">Demo</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-content">
+        <h2>Reduce review time, prevent manual errors, and improve LEED submissions</h2>
+        <p>Albedo is a lightweight demo that shows how an LLM-driven assistant can analyze LEED documentation, flag likely errors, and suggest actionable recommendations to increase certification readiness.</p>
+        <div class="hero-cta">
+          <button id="open-demo" class="btn primary">🤖 Try Albedo AI</button>
+          <a class="btn ghost" href="#about">Learn more</a>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden>
+        <div class="mock-device">
+          <div class="mock-screen">🤖 AI-Powered LEED Assistant<br/>📄 Upload Documents<br/>⚡ Get Instant Recommendations</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" class="cards">
+      <article class="card">
+        <h3>Hypothesis</h3>
+        <p>The green building pre-compliance process is often manual and error-prone. CertiSense focuses on automated error detection, recommendations, and faster reporting to support LEED submissions.</p>
+      </article>
+      <article class="card">
+        <h3>Data & Sources</h3>
+        <p>Uses LEED v4 rating systems documentation (BD+C, O+M, ID+C) and internal submission documents when available. Can pivot to building codes if submission data is not accessible.</p>
+      </article>
+      <article class="card">
+        <h3>Outputs</h3>
+        <ul>
+          <li>Error detection highlights</li>
+          <li>Credit recommendations and next steps</li>
+          <li>Audit trail and quick export for reviewers</li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="demo" class="chat-section">
+      <div class="chat-container">
+        <div class="chat-intro">
+          <h2>🤖 Albedo AI Assistant</h2>
+          <p>Upload LEED documents or ask questions about credits, compliance, and recommendations</p>
+        </div>
+        
+        <div class="chat-shell">
+          <div class="chat-header">
+            <div>
+              <strong>Albedo Demo</strong>
+              <div class="muted">AI-powered LEED assistant • Real-time analysis</div>
+            </div>
+            <div class="chat-actions">
+              <label class="upload-btn">
+                <input id="file-input" type="file" accept=".pdf,.docx,.txt" />
+                📄 Upload doc
+              </label>
+              <button id="clear-chat" class="btn small">🗑️ Clear</button>
+            </div>
+          </div>
+
+          <div id="messages" class="messages" aria-live="polite">
+            <div class="message bot">👋 Hi! I'm Albedo, your AI-powered LEED assistant. Upload a document or ask me about LEED credits, compliance requirements, or recommendations!</div>
+          </div>
+
+          <form id="chat-form" class="chat-form" onsubmit="return false;">
+            <input id="chat-input" placeholder="Ask Albedo... (try: 'list credits', 'energy efficiency', 'analyze document')" autocomplete="off" />
+            <button id="send-btn" class="btn primary">🚀 Send</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="features-section">
+      <div class="features-grid">
+        <div class="feature-card">
+          <h3>🔍 Error Detection</h3>
+          <p>Scans uploaded reports for common documentation issues and compliance gaps.</p>
+        </div>
+        <div class="feature-card">
+          <h3>💡 Smart Recommendations</h3>
+          <p>Suggests actions to earn more LEED credit points and improve certification readiness.</p>
+        </div>
+        <div class="feature-card">
+          <h3>💬 Interactive Chat</h3>
+          <p>Ask follow-up questions and get concise, contextual guidance on LEED requirements.</p>
+        </div>
+        <div class="feature-card">
+          <h3>🤝 Collaboration Ready</h3>
+          <p>Reduces inter-consultant review time and prevents miscommunication.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer-cards">
+      <div class="card small">
+        <h4>Software & Models</h4>
+        <p>Albedo is a prototype using Large Language Models for fast inspection and recommendation. Training and evaluation pipelines are Python-based (typical ML stack).</p>
+      </div>
+      <div class="card small">
+        <h4>Team & Contacts</h4>
+        <p>Research lead: project proposal author. For data collaboration, reach out to campus LEED program contacts and faculty in CAEE.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>© Albedo demo — built for the GreenFund proposal</div>
+    <div class="muted">This is a static demo. No external model calls are made — all behavior is simulated locally for presentation.</div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

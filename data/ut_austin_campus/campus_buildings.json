@@ -1,0 +1,67 @@
+[
+  {
+    "building_name": "Dell Medical School",
+    "building_code": "DMS",
+    "leed_status": "Certified",
+    "leed_version": "v4",
+    "leed_level": "Gold",
+    "building_type": "Academic",
+    "square_footage": 685000,
+    "construction_year": 2016,
+    "energy_consumption": 1200000,
+    "water_consumption": 500000,
+    "sustainability_features": [
+      "High-efficiency HVAC",
+      "Water-efficient fixtures",
+      "Daylighting"
+    ]
+  },
+  {
+    "building_name": "Engineering Education and Research Center",
+    "building_code": "EERC",
+    "leed_status": "Certified",
+    "leed_version": "v4",
+    "leed_level": "Platinum",
+    "building_type": "Academic",
+    "square_footage": 430000,
+    "construction_year": 2017,
+    "energy_consumption": 800000,
+    "water_consumption": 300000,
+    "sustainability_features": [
+      "Solar panels",
+      "Green roof",
+      "Energy recovery systems"
+    ]
+  },
+  {
+    "building_name": "Student Activity Center",
+    "building_code": "SAC",
+    "leed_status": "Registered",
+    "leed_version": "v4.1",
+    "leed_level": "Targeting Silver",
+    "building_type": "Student Life",
+    "square_footage": 150000,
+    "construction_year": 2020,
+    "energy_consumption": 400000,
+    "water_consumption": 200000,
+    "sustainability_features": [
+      "LED lighting",
+      "Low-flow fixtures"
+    ]
+  },
+  {
+    "building_name": "Jester Center",
+    "building_code": "JES",
+    "leed_status": "Not Certified",
+    "leed_version": "None",
+    "leed_level": "None",
+    "building_type": "Residential",
+    "square_footage": 2500000,
+    "construction_year": 1969,
+    "energy_consumption": 3000000,
+    "water_consumption": 1500000,
+    "sustainability_features": [
+      "Basic energy management"
+    ]
+  }
+]

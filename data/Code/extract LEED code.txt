@@ -1,0 +1,415 @@
+#!/usr/bin/env python3
+"""
+LEED v4.1 BD+C Credit Extractor (Pipeline-ready)
+- Robust parsing of categories/credits/sections
+- Document normalization + OCR fallback (600 DPI) for scanned pages
+- Extended JSON schema incl. options/submittals/related/exemplary/equations
+- Produces:
+    1) credits.json         (rich, structured per-credit records)
+    2) rag_chunks.jsonl     (RAG-ready, credit-unit chunking with metadata)
+"""
+
+import os, re, json, argparse, itertools
+from dataclasses import dataclass, asdict, field
+from typing import List, Dict, Any, Optional, Tuple
+
+import pdfplumber
+
+# Optional OCR fallback
+try:
+    from pdf2image import convert_from_path
+    import pytesseract
+    from PIL import Image
+    OCR_AVAILABLE = True
+except Exception:
+    OCR_AVAILABLE = False
+
+# -------------------------
+# Patterns & schema
+# -------------------------
+
+CATEGORY_TITLES = [
+    "LOCATION AND TRANSPORTATION (LT)",
+    "INTEGRATIVE PROCESS (IP)",
+    "SUSTAINABLE SITES (SS)",
+    "WATER EFFICIENCY (WE)",
+    "ENERGY AND ATMOSPHERE (EA)",
+    "MATERIALS AND RESOURCES (MR)",
+    "INDOOR ENVIRONMENTAL QUALITY (EQ)",
+    "INNOVATION (IN)",
+    "REGIONAL PRIORITY (RP)",
+    "APPENDICES"
+]
+
+CATEGORY_PATTERNS = [
+    re.compile(r'^LOCATION AND TRANSPORTATION\s*\(LT\)$', re.I),
+    re.compile(r'^INTEGRATIVE PROCESS\s*\(IP\)$', re.I),
+    re.compile(r'^SUSTAINABLE SITES\s*\(SS\)$', re.I),
+    re.compile(r'^WATER EFFICIENCY\s*\(WE\)$', re.I),
+    re.compile(r'^ENERGY AND ATMOSPHERE\s*\(EA\)$', re.I),
+    re.compile(r'^MATERIALS AND RESOURCES\s*\(MR\)$', re.I),
+    re.compile(r'^INDOOR ENVIRONMENTAL QUALITY\s*\(EQ\)$', re.I),
+    re.compile(r'^INNOVATION\s*\(IN\)$', re.I),
+    re.compile(r'^REGIONAL PRIORITY\s*\(RP\)$', re.I),
+    re.compile(r'^APPENDICES$', re.I),
+]
+
+# “XX Credit/Prerequisite: Name” OR “Credit/Prerequisite: Name”
+CREDIT_PATTERNS = [
+    re.compile(r'^(LT|IP|SS|WE|EA|MR|EQ|IN|RP)\s+(Credit|Prerequisite)\s*:?\s*(.+)$', re.I),
+    re.compile(r'^(Credit|Prerequisite)\s*:?\s*(.+)$', re.I),
+]
+
+POINTS_PATTERN = re.compile(r'^(\d+)(\s*-\s*(\d+))?\s*points?$', re.I)
+RATINGSYSTEM_PATTERN = re.compile(r'^(BD\+C.*|ID\+C.*|O\+M.*|ND.*)$', re.I)
+BULLET_PATTERN = re.compile(r'^[\-\u2022•]\s*(.*)')
+OPTION_HEADER = re.compile(r'^(Option\s*\d+\.|OR|AND)$', re.I)
+
+SECTION_PATTERNS = {
+    'intent': re.compile(r'^Intent:?$', re.I),
+    'requirements': re.compile(r'^Requirements?:?$', re.I),
+    'documentation': re.compile(r'^(Documentation|Submittals?):?$', re.I),
+    'points': re.compile(r'^Points:?$', re.I),
+    'applicability': re.compile(r'^(Applicable Rating System|This credit applies to)', re.I),
+    'equations': re.compile(r'^(Equations?|Calculation[s]?)[:]?$', re.I),
+    'related': re.compile(r'^(Related Credits|Cross-References)[:]?$', re.I),
+    'exemplary': re.compile(r'^(Exemplary Performance)[:]?$', re.I),
+    'referenced': re.compile(r'^(Referenced Standards|References)[:]?$', re.I),
+}
+
+CLEAN_LINE = re.compile(r'\s+')
+
+@dataclass
+class OptionBlock:
+    heading: str
+    lines: List[str] = field(default_factory=list)
+
+@dataclass
+class CreditRecord:
+    category: Optional[str] = None
+    credit_code: Optional[str] = None       # e.g., EA, WE, etc.
+    credit_name: Optional[str] = None       # plain text name
+    credit_type: Optional[str] = None       # 'Credit' | 'Prerequisite'
+    version: str = "v4.1"
+    rating_system: Optional[str] = None
+    intent: str = ""
+    requirements: List[str] = field(default_factory=list)
+    options: List[OptionBlock] = field(default_factory=list)
+    documentation: List[str] = field(default_factory=list)   # aka submittals
+    points_raw: Optional[str] = None
+    points_min: Optional[int] = None
+    points_max: Optional[int] = None
+    applicability: List[str] = field(default_factory=list)
+    equations: List[str] = field(default_factory=list)
+    calc_methods: List[str] = field(default_factory=list)
+    related_credits: List[str] = field(default_factory=list)
+    exemplary_performance: List[str] = field(default_factory=list)
+    referenced_standards: List[str] = field(default_factory=list)
+    tables: List[Any] = field(default_factory=list)
+    figures: List[Dict[str, Any]] = field(default_factory=list)
+    sources: Dict[str, Any] = field(default_factory=lambda: {"pages": []})  # page refs
+    rating_systems_applicable: List[str] = field(default_factory=list)
+
+# -------------------------
+# Utilities
+# -------------------------
+
+def clean(s: str) -> str:
+    return CLEAN_LINE.sub(' ', s).strip()
+
+def parse_points(text: str) -> Tuple[Optional[int], Optional[int]]:
+    m = POINTS_PATTERN.match(text)
+    if not m:
+        return None, None
+    lo = int(m.group(1))
+    hi = int(m.group(3)) if m.group(3) else lo
+    return lo, hi
+
+def ocr_page_image(image: "Image.Image") -> List[str]:
+    txt = pytesseract.image_to_string(image) if OCR_AVAILABLE else ""
+    lines = [clean(x) for x in txt.splitlines()]
+    return [x for x in lines if x]
+
+def extract_text_lines(pdf_path: str) -> List[Tuple[int, List[str]]]:
+    """
+    Returns list of (page_index, lines) with a PDF-first approach,
+    but falls back to OCR per page if a page is empty or looks blank.
+    """
+    out: List[Tuple[int, List[str]]] = []
+    with pdfplumber.open(pdf_path) as pdf:
+        blank_like = set()
+        for i, page in enumerate(pdf.pages):
+            text = page.extract_text() or ""
+            lines = [clean(x) for x in text.splitlines() if clean(x)]
+            if not lines or len(' '.join(lines)) < 15:
+                blank_like.add(i)
+            out.append((i, lines))
+
+    if OCR_AVAILABLE and blank_like:
+        images = convert_from_path(pdf_path, dpi=600)  # 600 DPI like the paper
+        for i in blank_like:
+            out[i] = (i, ocr_page_image(images[i]))
+    return out
+
+# -------------------------
+# Parser
+# -------------------------
+
+def parse_pdf(pdf_path: str) -> List[CreditRecord]:
+    pages = extract_text_lines(pdf_path)
+    credits: List[CreditRecord] = []
+    current_category = None
+    current: Optional[CreditRecord] = None
+    current_section = None
+    req_buffer: List[str] = []
+    opt_buffer: Optional[OptionBlock] = None
+    intent_buffer: List[str] = []
+
+    for page_idx, lines in pages:
+        for raw in lines:
+            line = raw.strip()
+
+            # Category?
+            for idx, pat in enumerate(CATEGORY_PATTERNS):
+                if pat.match(line):
+                    current_category = CATEGORY_TITLES[idx]
+                    break
+
+            # Credit header?
+            matched_credit = False
+            for pat in CREDIT_PATTERNS:
+                m = pat.match(line)
+                if m:
+                    matched_credit = True
+
+                    # finalize prior record
+                    if current:
+                        if intent_buffer:
+                            current.intent = clean(' '.join(intent_buffer))
+                            intent_buffer = []
+                        if req_buffer:
+                            current.requirements.extend(req_buffer); req_buffer = []
+                        if opt_buffer:
+                            current.options.append(opt_buffer); opt_buffer = None
+                        credits.append(current)
+
+                    # new record
+                    if len(m.groups()) == 3:
+                        code, ctype, name = m.groups()
+                        credit_code = code.upper()
+                    else:
+                        ctype, name = m.groups()
+                        # try infer code from category title
+                        credit_code = (current_category.split('(')[-1].split(')')[0]
+                                       if current_category and '(' in current_category else None)
+
+                    current = CreditRecord(
+                        category=current_category,
+                        credit_code=credit_code,
+                        credit_name=clean(name),
+                        credit_type="Prerequisite" if re.search(r'Prerequisite', ctype, re.I) else "Credit",
+                    )
+                    current.sources["pages"].append(page_idx + 1)
+                    current_section = None
+                    intent_buffer = []
+                    req_buffer = []
+                    opt_buffer = None
+                    break
+            if matched_credit:
+                continue
+
+            if not current:
+                continue
+
+            # Points & rating systems (when they float near headers)
+            if POINTS_PATTERN.match(line):
+                current.points_raw = line
+                lo, hi = parse_points(line)
+                current.points_min, current.points_max = lo, hi
+                continue
+
+            if RATINGSYSTEM_PATTERN.match(line):
+                current.rating_system = line
+                continue
+
+            # Section headers
+            switched = False
+            for sec_name, sec_pat in SECTION_PATTERNS.items():
+                if sec_pat.match(line):
+                    # flush buffers from previous section
+                    if current_section == 'requirements' and req_buffer:
+                        current.requirements.extend(req_buffer); req_buffer = []
+                    if current_section == 'intent' and intent_buffer:
+                        current.intent = clean(' '.join(intent_buffer)); intent_buffer = []
+                    if current_section == 'options' and opt_buffer:
+                        current.options.append(opt_buffer); opt_buffer = None
+                    current_section = sec_name
+                    switched = True
+                    break
+            if switched:
+                continue
+
+            # Applicability bulleted
+            if current_section == 'applicability':
+                mb = BULLET_PATTERN.match(line)
+                if mb:
+                    current.applicability.append(mb.group(1)); continue
+
+            # Documentation/Submittals
+            if current_section == 'documentation':
+                mb = BULLET_PATTERN.match(line)
+                current.documentation.append(mb.group(1) if mb else line); continue
+
+            # Related Credits
+            if current_section == 'related':
+                current.related_credits.append(line); continue
+
+            # Exemplary
+            if current_section == 'exemplary':
+                current.exemplary_performance.append(line); continue
+
+            # Referenced Standards
+            if current_section == 'referenced':
+                current.referenced_standards.append(line); continue
+
+            # Equations/Calculations
+            if current_section == 'equations':
+                current.equations.append(line); continue
+
+            # Intent text
+            if current_section == 'intent':
+                intent_buffer.append(line); continue
+
+            # Requirements (with Options / AND / OR preserved)
+            if current_section == 'requirements':
+                if OPTION_HEADER.match(line):
+                    # close previous option block
+                    if opt_buffer:
+                        current.options.append(opt_buffer)
+                    opt_buffer = OptionBlock(heading=line, lines=[])
+                else:
+                    mb = BULLET_PATTERN.match(line)
+                    text = mb.group(1) if mb else line
+                    if opt_buffer:
+                        opt_buffer.lines.append(text)
+                    else:
+                        req_buffer.append(text)
+                continue
+
+            # If no active section but we’re inside a credit, lightly ignore extra text
+
+        # per page end: attach page number for provenance
+        if current and current.sources["pages"] and current.sources["pages"][-1] != (page_idx + 1):
+            current.sources["pages"].append(page_idx + 1)
+
+    # finalize last record
+    if current:
+        if intent_buffer:
+            current.intent = clean(' '.join(intent_buffer))
+        if req_buffer:
+            current.requirements.extend(req_buffer)
+        if opt_buffer:
+            current.options.append(opt_buffer)
+        credits.append(current)
+
+    return credits
+
+# -------------------------
+# Tables & figures capture (basic)
+# -------------------------
+
+def attach_tables_figures(pdf_path: str, credits: List[CreditRecord]) -> None:
+    page_to_credit_idxs: Dict[int, List[int]] = {}
+    for idx, c in enumerate(credits):
+        for p in c.sources["pages"]:
+            page_to_credit_idxs.setdefault(p, []).append(idx)
+    with pdfplumber.open(pdf_path) as pdf:
+        for pnum, page in enumerate(pdf.pages, start=1):
+            tables = page.extract_tables() or []
+            figures = []
+            for img in getattr(page, "images", []):
+                figures.append({
+                    "bbox": img.get("bbox"),
+                    "width": img.get("width"),
+                    "height": img.get("height"),
+                    "name": img.get("name")
+                })
+            for cidx in page_to_credit_idxs.get(pnum, []):
+                if tables:
+                    credits[cidx].tables.extend(tables)
+                if figures:
+                    credits[cidx].figures.extend(figures)
+
+# -------------------------
+# RAG-ready chunking
+# -------------------------
+
+def to_rag_chunks(credits: List[CreditRecord]) -> List[Dict[str, Any]]:
+    """
+    Create credit-unit chunks with metadata for ANN/FAISS later.
+    Mirrors the paper's metadata-aligned chunking (by credit unit).  :contentReference[oaicite:4]{index=4}
+    """
+    chunks = []
+    for c in credits:
+        meta = {
+            "credit_code": c.credit_code,
+            "credit_name": c.credit_name,
+            "category": c.category,
+            "type": c.credit_type,
+            "points_min": c.points_min,
+            "points_max": c.points_max,
+            "version": c.version,
+            "pages": c.sources.get("pages", [])
+        }
+        text_blocks = []
+
+        if c.intent:
+            text_blocks.append(f"Intent: {c.intent}")
+        if c.requirements:
+            text_blocks.append("Requirements:\n- " + "\n- ".join(c.requirements))
+        for op in c.options:
+            text_blocks.append(op.heading + "\n- " + "\n- ".join(op.lines))
+        if c.documentation:
+            text_blocks.append("Submittals:\n- " + "\n- ".join(c.documentation))
+        if c.applicability:
+            text_blocks.append("Applicability:\n- " + "\n- ".join(c.applicability))
+        if c.equations:
+            text_blocks.append("Equations:\n" + "\n".join(c.equations))
+        if c.related_credits:
+            text_blocks.append("Related Credits:\n- " + "\n- ".join(c.related_credits))
+        if c.exemplary_performance:
+            text_blocks.append("Exemplary Performance:\n- " + "\n- ".join(c.exemplary_performance))
+        if c.referenced_standards:
+            text_blocks.append("Referenced Standards:\n- " + "\n- ".join(c.referenced_standards))
+
+        full_text = f"{c.credit_code} {c.credit_type}: {c.credit_name}\n" + "\n\n".join(text_blocks)
+        chunks.append({"text": full_text, "metadata": meta})
+    return chunks
+
+# -------------------------
+# Orchestrator (fits the platform’s pipeline)
+# -------------------------
+
+def run_extraction(pdf_path: str, out_json: str, out_chunks: str) -> None:
+    credits = parse_pdf(pdf_path)
+    attach_tables_figures(pdf_path, credits)
+    with open(out_json, "w", encoding="utf-8") as f:
+        json.dump([asdict(c) for c in credits], f, ensure_ascii=False, indent=2)
+    chunks = to_rag_chunks(credits)
+    with open(out_chunks, "w", encoding="utf-8") as f:
+        for ch in chunks:
+            f.write(json.dumps(ch, ensure_ascii=False) + "\n")
+    print(f"✓ Extracted {len(credits)} credits")
+    print(f"→ {out_json}")
+    print(f"→ {out_chunks}")
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--pdf", required=True, help="Path to LEED v4.1 BD+C PDF")
+    ap.add_argument("--out_json", default="credits.json", help="Output JSON for structured credits")
+    ap.add_argument("--out_chunks", default="rag_chunks.jsonl", help="Output JSONL for RAG chunks")
+    args = ap.parse_args()
+    run_extraction(args.pdf, args.out_json, args.out_chunks)
+
+if __name__ == "__main__":
+    main()
