@@ -1,5 +1,52 @@
 // Wrap initialization in DOMContentLoaded to ensure elements exist (robust for different load scenarios)
 document.addEventListener('DOMContentLoaded', () => {
+  // Calculator functionality
+  const sizeSlider = document.getElementById('size-slider');
+  const sizeValue = document.getElementById('size-value');
+  const scoreSlider = document.getElementById('score-slider');
+  const scoreValue = document.getElementById('score-value');
+  const increaseEl = document.getElementById('increase');
+  const timeEl = document.getElementById('time');
+  const readinessEl = document.getElementById('readiness');
+
+  function updateCalculator() {
+    const size = parseInt(sizeSlider.value);
+    const score = parseInt(scoreSlider.value);
+    
+    sizeValue.textContent = size.toLocaleString();
+    scoreValue.textContent = score;
+    
+    // Mock calculations
+    const potentialIncrease = Math.min(25, Math.floor(size / 2000) + Math.floor(score / 10));
+    const timeSaved = Math.floor(size / 1000) * 5;
+    const readiness = Math.min(95, score + potentialIncrease);
+    
+    increaseEl.textContent = `+${potentialIncrease} points`;
+    timeEl.textContent = `${timeSaved} hours`;
+    readinessEl.textContent = `${readiness}%`;
+  }
+
+  if (sizeSlider && scoreSlider) {
+    sizeSlider.addEventListener('input', updateCalculator);
+    scoreSlider.addEventListener('input', updateCalculator);
+    updateCalculator(); // Initial calculation
+  }
+
+  // Problem expand buttons
+  const expandBtns = document.querySelectorAll('.expand-btn');
+  expandBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const solution = btn.nextElementSibling;
+      if (solution.classList.contains('hidden')) {
+        solution.classList.remove('hidden');
+        btn.textContent = 'Click to hide solution';
+      } else {
+        solution.classList.add('hidden');
+        btn.textContent = 'Click to see solution';
+      }
+    });
+  });
+
   // RAG API configuration
   const RAG_API_URL = 'http://localhost:5000';
   let uploadedDocument = null;
@@ -22,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('file-input');
   const clearBtn = document.getElementById('clear-chat');
   const openDemoBtn = document.getElementById('open-demo');
+  const tryDemoBtn = document.getElementById('try-demo');
 
   if(!messagesEl || !form || !input || !sendBtn) {
     console.error('Demo init: missing required DOM elements. Aborting script to avoid errors.');
@@ -268,6 +316,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   openDemoBtn && openDemoBtn.addEventListener('click', ()=>{
+    const demoEl = document.querySelector('#demo');
+    demoEl && demoEl.scrollIntoView({behavior:'smooth'});
+  });
+
+  tryDemoBtn && tryDemoBtn.addEventListener('click', ()=>{
     const demoEl = document.querySelector('#demo');
     demoEl && demoEl.scrollIntoView({behavior:'smooth'});
   });
