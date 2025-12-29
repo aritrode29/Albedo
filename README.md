@@ -166,6 +166,23 @@ Based on the campus living lab study:
    python test_greenfund_proposal.py
    ```
 
+### Robust RAG demo (templates + classifier)
+
+1. **Build or refresh indices (required once)**
+   ```bash
+   python src/build_rag_corpus.py
+   ```
+
+2. **Run the strict-citation RAG demo**
+   ```bash
+   python src/rag_demo.py
+   ```
+
+The demo showcases:
+- Retrieval-augmented answers with strict citations back to LEED sources
+- Auto-generated credit templates pulled from the extracted catalog
+- A binary evidence classifier indicating whether provided evidence supports the credit
+
 ## 📁 Project Structure
 
 ```
