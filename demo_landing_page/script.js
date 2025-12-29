@@ -67,10 +67,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // RAG API configuration
-  const RAG_API_URL = 'http://localhost:5000';
+  // RAG API configuration - uses config.js for easy customization
+  const RAG_API_URL = window.getApiUrl ? window.getApiUrl() : 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+      ? 'http://localhost:5000' 
+      : 'http://localhost:5000'); // Default fallback
+  
   let uploadedDocument = null;
   let apiHealthy = false;
+  
+  // Log API configuration for debugging
+  console.log('Albedo API URL:', RAG_API_URL);
+  console.log('Environment:', window.location.hostname === 'localhost' ? 'Development' : 'Production');
 
   async function checkApiStatus() {
     try {
