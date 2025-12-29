@@ -220,18 +220,35 @@ platform.save_results()
 platform.generate_final_report()
 ```
 
-## 🔎 Demo landing site
+## 🔎 Demo Landing Page
 
-There's a small demo landing site in the `demo_site/` folder that runs a lightweight Flask app to showcase extracted LEED credits and a simple UI.
+There's a modern, gamified demo landing page in the `demo_landing_page/` folder showcasing the Albedo AI assistant.
 
-To run the demo (from the `demo_site` folder):
+### Local Development
 
-```powershell
-python -m pip install -r requirements.txt
-python app.py
+Simply open `demo_landing_page/index.html` in your web browser, or use a local server:
+
+```bash
+cd demo_landing_page
+python -m http.server 8000
 ```
 
-Then open http://127.0.0.1:5000/ in your browser.
+Then open `http://localhost:8000` in your browser.
+
+### GitHub Pages Deployment
+
+The demo landing page is automatically deployed to GitHub Pages:
+
+1. **Automatic Deployment**: Push changes to `main` or `master` branch
+2. **GitHub Actions**: The workflow in `.github/workflows/deploy-pages.yml` automatically builds and deploys
+3. **Access**: Your site will be available at `https://<username>.github.io/<repository-name>/`
+
+**Setup Instructions:**
+1. Go to your repository Settings → Pages
+2. Under "Source", select "GitHub Actions"
+3. Push your changes - deployment happens automatically!
+
+**Note**: Make sure the `demo_landing_page` folder contains all necessary files (index.html, styles.css, script.js).
 
 
 ### UT Austin Campus Living Lab Usage

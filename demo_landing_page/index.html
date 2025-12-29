@@ -5,103 +5,319 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Albedo — AI-Powered LEED Pre-Compliance Assistant</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
   <header class="site-header">
-    <div class="brand">
-      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
-        <defs>
-          <linearGradient id="albedoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#0ea5a3;stop-opacity:1" />
-            <stop offset="50%" style="stop-color:#0f766e;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#065f46;stop-opacity:1" />
-          </linearGradient>
-        </defs>
-        <circle cx="24" cy="24" r="20" fill="url(#albedoGradient)"/>
-        <path d="M12 24c0-6.6 5.4-12 12-12s12 5.4 12 12" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M18 30c2-4 6-6 10-6s8 2 10 6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-        <circle cx="24" cy="24" r="3" fill="#fff"/>
-        <path d="M20 20l8 8M28 20l-8 8" stroke="#0f766e" stroke-width="1" stroke-linecap="round"/>
-      </svg>
-      <div>
-        <h1>Albedo</h1>
-        <p class="tag">AI-powered LEED pre-compliance, error detection & recommendations</p>
+    <div class="header-container">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+          <defs>
+            <linearGradient id="albedoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#BF5700;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#A04500;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          <circle cx="24" cy="24" r="20" fill="url(#albedoGradient)"/>
+          <path d="M12 24c0-6.6 5.4-12 12-12s12 5.4 12 12" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path d="M18 30c2-4 6-6 10-6s8 2 10 6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <circle cx="24" cy="24" r="3" fill="#fff"/>
+          <path d="M20 20l8 8M28 20l-8 8" stroke="#333F48" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <div class="brand-text">
+          <h1>Albedo</h1>
+        </div>
       </div>
+      <nav>
+        <a href="#about">About</a>
+        <a href="#features">Features</a>
+        <a href="#demo">Demo</a>
+        <a href="#demo" class="btn-nav">Get Started</a>
+      </nav>
     </div>
-    <nav>
-      <a href="#about">About</a>
-      <a href="#features">Features</a>
-      <a href="#demo">Demo</a>
-    </nav>
   </header>
 
   <main>
-    <!-- Hero Section with Calculator -->
+    <!-- Hero Section with Stats -->
     <section class="hero">
-      <div class="hero-content">
-        <h2>Accelerate LEED Certification with AI-Powered Analysis</h2>
-        <p>Reduce review time by 70%, prevent manual errors, and get actionable recommendations for LEED submissions. Upload your documents and get instant compliance insights.</p>
-        <div class="hero-cta">
-          <button id="open-demo" class="btn primary">🚀 Try Albedo AI</button>
-          <a class="btn ghost" href="#about">Learn More</a>
+      <div class="hero-container">
+        <div class="hero-content">
+          <h1 class="hero-title">Accelerate LEED Certification with AI-Powered Analysis</h1>
+          <p class="hero-subtitle">Reduce review time by 70%, prevent manual errors, and get actionable recommendations for LEED submissions. Upload your documents and get instant compliance insights.</p>
+          <div class="hero-cta">
+            <button id="open-demo" class="btn primary">Calculate Your Savings</button>
+            <a class="btn ghost" href="#about">See How It Works</a>
+          </div>
         </div>
-      </div>
-      <div class="hero-visual">
-        <div class="calculator">
-          <h3>LEED Compliance Calculator</h3>
-          <div class="slider-group">
-            <label>Project Size (sq ft): <span id="size-value">50,000</span></label>
-            <input type="range" id="size-slider" min="10000" max="500000" value="50000" step="10000">
-          </div>
-          <div class="slider-group">
-            <label>Current LEED Score: <span id="score-value">40</span></label>
-            <input type="range" id="score-slider" min="0" max="100" value="40">
-          </div>
-          <div class="results">
-            <div class="result-item">
-              <span class="result-label">Potential Score Increase:</span>
-              <span class="result-value" id="increase">+15 points</span>
+        
+        <!-- Live Stats Banner -->
+        <div class="hero-stats">
+          <div class="stat-badge" data-stat="time">
+            <div class="stat-number">70%</div>
+            <div class="stat-label">Time Saved</div>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" style="width: 70%"></div>
             </div>
-            <div class="result-item">
-              <span class="result-label">Time Saved:</span>
-              <span class="result-value" id="time">35 hours</span>
+          </div>
+          <div class="stat-badge" data-stat="rate">
+            <div class="stat-number">85%</div>
+            <div class="stat-label">Certification Rate</div>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" style="width: 85%"></div>
             </div>
-            <div class="result-item">
-              <span class="result-label">Certification Readiness:</span>
-              <span class="result-value" id="readiness">85%</span>
+          </div>
+          <div class="stat-badge" data-stat="credits">
+            <div class="stat-number">50+</div>
+            <div class="stat-label">Credits Analyzed</div>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" style="width: 50%"></div>
+            </div>
+          </div>
+          <div class="stat-badge" data-stat="available">
+            <div class="stat-number">24/7</div>
+            <div class="stat-label">AI Available</div>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" style="width: 100%"></div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- Demo Section -->
+    <section id="demo" class="demo-section">
+      <div class="section-container">
+        <div class="section-header">
+          <h2 class="section-title">
+            <svg class="inline-icon" width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="6" y="8" width="20" height="18" rx="2" fill="#BF5700" opacity="0.1"/>
+              <rect x="10" y="12" width="12" height="2" fill="#BF5700"/>
+              <rect x="10" y="16" width="8" height="2" fill="#BF5700"/>
+              <circle cx="16" cy="22" r="3" fill="#BF5700"/>
+              <rect x="8" y="6" width="16" height="2" rx="1" fill="#BF5700"/>
+            </svg>
+            Try Albedo AI Assistant
+          </h2>
+          <p class="section-subtitle">Upload LEED documents or ask questions about credits and compliance</p>
+        </div>
+        
+        <div class="chat-shell">
+          <div class="chat-header">
+            <div>
+              <strong>Albedo AI Assistant</strong>
+              <div class="muted">Your LEED compliance expert • Always ready to help</div>
+            </div>
+            <div class="chat-actions">
+              <button id="clear-chat" class="btn small">Clear chat</button>
+            </div>
+          </div>
+
+          <div id="messages" class="messages" aria-live="polite">
+            <div class="message bot welcome-message">
+              <div class="message-content">
+                <div class="bot-avatar">
+                  <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+                    <rect x="6" y="8" width="20" height="18" rx="2" fill="white"/>
+                    <rect x="10" y="12" width="12" height="2" fill="#BF5700"/>
+                    <rect x="10" y="16" width="8" height="2" fill="#BF5700"/>
+                    <circle cx="16" cy="22" r="3" fill="#BF5700"/>
+                    <rect x="8" y="6" width="16" height="2" rx="1" fill="#BF5700"/>
+                  </svg>
+                </div>
+                <div>
+                  <strong>Hi! I'm Albedo</strong>
+                  <p>Your AI-powered LEED assistant. I can help you with:</p>
+                  <ul class="help-list">
+                    <li>
+                      <svg class="list-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="3" width="12" height="10" rx="1" fill="#BF5700" opacity="0.1"/>
+                        <path d="M4 6H12M4 8H10M4 10H12" stroke="#BF5700" stroke-width="1.5" stroke-linecap="round"/>
+                      </svg>
+                      Analyze LEED documents
+                    </li>
+                    <li>
+                      <svg class="list-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="2" width="12" height="12" rx="1" fill="#BF5700" opacity="0.1"/>
+                        <path d="M5 5H11M5 7H11M5 9H9" stroke="#BF5700" stroke-width="1.5" stroke-linecap="round"/>
+                      </svg>
+                      List and explain credits
+                    </li>
+                    <li>
+                      <svg class="list-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="5" fill="#BF5700" opacity="0.1"/>
+                        <path d="M8 4V8L10 10" stroke="#BF5700" stroke-width="1.5" stroke-linecap="round"/>
+                        <circle cx="8" cy="8" r="1" fill="#BF5700"/>
+                      </svg>
+                      Provide recommendations
+                    </li>
+                    <li>
+                      <svg class="list-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="6" fill="#BF5700" opacity="0.1"/>
+                        <circle cx="8" cy="5" r="1" fill="#BF5700"/>
+                        <path d="M8 7V11M8 12V13" stroke="#BF5700" stroke-width="1.5" stroke-linecap="round"/>
+                      </svg>
+                      Answer compliance questions
+                    </li>
+                  </ul>
+                  <p class="suggestion-text">Try asking me something or upload a document to get started!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="quick-suggestions" id="quick-suggestions">
+            <div class="suggestion-label">Quick questions:</div>
+            <div class="suggestion-chips">
+              <button class="suggestion-chip" data-query="list all LEED credits">List all credits</button>
+              <button class="suggestion-chip" data-query="energy efficiency requirements">Energy efficiency</button>
+              <button class="suggestion-chip" data-query="water efficiency credits">Water credits</button>
+              <button class="suggestion-chip" data-query="how to maximize LEED points">Maximize points</button>
+            </div>
+          </div>
+
+          <form id="chat-form" class="chat-form" onsubmit="return false;">
+            <div class="input-wrapper">
+              <input id="chat-input" placeholder="Ask about LEED credits, compliance, or upload a document..." autocomplete="off" />
+              <button type="button" id="attach-btn" class="attach-btn" title="Upload document">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M10 4V12M6 8L10 4L14 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M4 14H16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <button type="submit" id="send-btn" class="btn primary send-btn">
+              <span class="send-text">Send</span>
+              <svg class="send-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 14L14 2M14 2H6M14 2V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <input id="file-input-hidden" type="file" accept=".pdf,.docx,.txt" style="display: none;" />
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Calculator Section -->
+    <section class="calculator-section">
+      <div class="section-container">
+        <h2 class="section-title">Calculate Your Savings</h2>
+        <p class="section-subtitle">Drag the slider to see your potential savings with Albedo</p>
+        <div class="calculator">
+          <div class="slider-group">
+            <label>Project Size: <span id="size-value">50,000</span> sq ft</label>
+            <input type="range" id="size-slider" min="10000" max="500000" value="50000" step="10000">
+            <div class="slider-labels">
+              <span>10,000</span>
+              <span>500,000</span>
+            </div>
+          </div>
+          <div class="slider-group">
+            <label>Current LEED Score: <span id="score-value">40</span></label>
+            <div class="score-progress-container">
+              <div class="score-progress-bar">
+                <div class="score-progress-fill" id="score-progress" style="width: 40%"></div>
+              </div>
+              <div class="score-milestones">
+                <span class="milestone" data-level="Certified">40</span>
+                <span class="milestone" data-level="Silver">50</span>
+                <span class="milestone" data-level="Gold">60</span>
+                <span class="milestone" data-level="Platinum">80</span>
+              </div>
+            </div>
+            <input type="range" id="score-slider" min="0" max="100" value="40">
+            <div class="slider-labels">
+              <span>0</span>
+              <span>100</span>
+            </div>
+          </div>
+          <div class="calculator-results">
+            <div class="result-card">
+              <div class="result-label">Potential Score Increase</div>
+              <div class="result-value" id="increase">+15 points</div>
+              <div class="progress-badge" id="level-badge">Certified</div>
+            </div>
+            <div class="result-card">
+              <div class="result-label">Time Saved</div>
+              <div class="result-value" id="time">35 hours</div>
+              <div class="progress-bar-mini">
+                <div class="progress-fill-mini" id="time-progress" style="width: 70%"></div>
+              </div>
+            </div>
+            <div class="result-card">
+              <div class="result-label">Certification Readiness</div>
+              <div class="result-value" id="readiness">85%</div>
+              <div class="progress-bar-mini">
+                <div class="progress-fill-mini" id="readiness-progress" style="width: 85%"></div>
+              </div>
+            </div>
+          </div>
+          <button class="btn primary large">Get Your Custom Quote</button>
+        </div>
+      </div>
+    </section>
+
     <!-- Problems We Solve -->
     <section id="problems" class="problems-section">
-      <h2>The Problems We Solve</h2>
-      <p>Every LEED project faces challenges. Click to explore our solutions.</p>
-      <div class="problems-grid">
-        <div class="problem-card">
-          <h3>📋 Manual LEED Review is Time-Consuming</h3>
-          <p>Consultants spend weeks manually checking credits, leading to delays and missed opportunities.</p>
-          <button class="expand-btn">Click to see solution</button>
-          <div class="solution hidden">
-            <p>Albedo automates credit analysis, providing instant recommendations and error detection to cut review time by 70%.</p>
-          </div>
+      <div class="section-container">
+        <div class="section-header">
+          <span class="section-tag">WHY THIS MATTERS</span>
+          <h2 class="section-title">The Problems<br>We Solve</h2>
+          <p class="section-subtitle">Every challenge is an opportunity. Click to explore our solutions.</p>
         </div>
-        <div class="problem-card">
-          <h3>❌ Human Errors in Submissions</h3>
-          <p>Manual processes lead to overlooked credits and documentation errors that can fail certification.</p>
-          <button class="expand-btn">Click to see solution</button>
-          <div class="solution hidden">
-            <p>Our AI scans for common errors and suggests fixes, ensuring higher certification success rates.</p>
+        <div class="problems-grid">
+          <div class="problem-card">
+            <div class="problem-icon">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <rect x="12" y="12" width="40" height="40" rx="4" fill="#BF5700" opacity="0.1"/>
+                <circle cx="32" cy="32" r="12" fill="#BF5700"/>
+                <path d="M32 24V32L38 38" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="problem-number">70%+</div>
+            <h3>Manual LEED Review is Time-Consuming</h3>
+            <p>Consultants spend weeks manually checking credits, leading to delays and missed opportunities. <strong>That's hundreds of hours wasted on repetitive tasks.</strong></p>
+            <button class="expand-btn">Click to see solution</button>
+            <div class="solution hidden">
+              <p><strong>Our Solution:</strong></p>
+              <p>Albedo automates credit analysis, providing instant recommendations and error detection to cut review time by 70%.</p>
+            </div>
           </div>
-        </div>
-        <div class="problem-card">
-          <h3>💰 High Certification Costs</h3>
-          <p>Delays and rework increase project costs and reduce profitability.</p>
-          <button class="expand-btn">Click to see solution</button>
-          <div class="solution hidden">
-            <p>Streamlined processes and proactive recommendations help projects stay on budget and timeline.</p>
+          <div class="problem-card">
+            <div class="problem-icon">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <circle cx="32" cy="32" r="20" fill="#BF5700" opacity="0.1"/>
+                <circle cx="32" cy="32" r="16" stroke="#BF5700" stroke-width="3"/>
+                <path d="M32 24V32M32 36V40" stroke="#BF5700" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="problem-number">Error</div>
+            <h3>Human Errors in Submissions</h3>
+            <p>Manual processes lead to overlooked credits and documentation errors that can fail certification. <strong>One mistake can derail months of work.</strong></p>
+            <button class="expand-btn">Click to see solution</button>
+            <div class="solution hidden">
+              <p><strong>Our Solution:</strong></p>
+              <p>Our AI scans for common errors and suggests fixes, ensuring higher certification success rates.</p>
+            </div>
+          </div>
+          <div class="problem-card">
+            <div class="problem-icon">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <rect x="16" y="20" width="32" height="24" rx="2" fill="#BF5700" opacity="0.1"/>
+                <path d="M32 16L36 20L32 24L28 20L32 16Z" fill="#BF5700"/>
+                <rect x="20" y="24" width="24" height="16" rx="2" fill="#BF5700"/>
+                <path d="M24 32H40" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="problem-number">Cost</div>
+            <h3>High Certification Costs</h3>
+            <p>Delays and rework increase project costs and reduce profitability. <strong>Budget overruns are common in LEED projects.</strong></p>
+            <button class="expand-btn">Click to see solution</button>
+            <div class="solution hidden">
+              <p><strong>Our Solution:</strong></p>
+              <p>Streamlined processes and proactive recommendations help projects stay on budget and timeline.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -109,148 +325,199 @@
 
     <!-- Our Advantages -->
     <section class="advantages-section">
-      <h2>Our AI-Powered Advantages</h2>
-      <div class="advantages-grid">
-        <div class="advantage-card">
-          <h3>🤖 Advanced AI Analysis</h3>
-          <p>Leverages cutting-edge LLMs trained on LEED v4 documentation for accurate, contextual insights.</p>
+      <div class="section-container">
+        <div class="section-header">
+          <h2 class="section-title">Our Moats</h2>
+          <p class="section-subtitle">What makes Albedo uniquely positioned to win</p>
         </div>
-        <div class="advantage-card">
-          <h3>⚡ Real-Time Processing</h3>
-          <p>Get instant feedback on uploads, with interactive chat for follow-up questions.</p>
-        </div>
-        <div class="advantage-card">
-          <h3>📊 Comprehensive Reporting</h3>
-          <p>Detailed audit trails, credit recommendations, and exportable reports for stakeholders.</p>
-        </div>
-        <div class="advantage-card">
-          <h3>🔄 Continuous Learning</h3>
-          <p>Improves with each analysis, adapting to new LEED updates and project types.</p>
+        <div class="advantages-grid">
+          <div class="advantage-card">
+            <div class="icon-wrapper">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <rect x="8" y="8" width="48" height="48" rx="4" fill="#BF5700" opacity="0.1"/>
+                <path d="M32 16L40 28H24L32 16Z" fill="#BF5700"/>
+                <rect x="20" y="32" width="24" height="20" rx="2" fill="#BF5700"/>
+              </svg>
+            </div>
+            <h3>Advanced AI Analysis</h3>
+            <p>Leverages cutting-edge LLMs trained on LEED v4 documentation for accurate, contextual insights.</p>
+          </div>
+          <div class="advantage-card">
+            <div class="icon-wrapper">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <circle cx="32" cy="32" r="24" fill="#BF5700" opacity="0.1"/>
+                <circle cx="32" cy="32" r="16" fill="#BF5700"/>
+                <path d="M32 20V32L40 40" stroke="white" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>Real-Time Processing</h3>
+            <p>Get instant feedback on uploads, with interactive chat for follow-up questions.</p>
+          </div>
+          <div class="advantage-card">
+            <div class="icon-wrapper">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <rect x="12" y="12" width="40" height="40" rx="4" fill="#BF5700" opacity="0.1"/>
+                <rect x="16" y="20" width="32" height="4" fill="#BF5700"/>
+                <rect x="16" y="28" width="24" height="4" fill="#BF5700"/>
+                <rect x="16" y="36" width="28" height="4" fill="#BF5700"/>
+              </svg>
+            </div>
+            <h3>Comprehensive Reporting</h3>
+            <p>Detailed audit trails, credit recommendations, and exportable reports for stakeholders.</p>
+          </div>
+          <div class="advantage-card">
+            <div class="icon-wrapper">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <path d="M32 8L40 24H24L32 8Z" fill="#BF5700" opacity="0.1"/>
+                <path d="M32 24L40 40H24L32 24Z" fill="#BF5700" opacity="0.2"/>
+                <path d="M32 40L40 56H24L32 40Z" fill="#BF5700"/>
+              </svg>
+            </div>
+            <h3>Continuous Learning</h3>
+            <p>Improves with each analysis, adapting to new LEED updates and project types.</p>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Introducing Albedo AI -->
     <section class="product-section">
-      <h2>Introducing Albedo AI</h2>
-      <p>Smart LEED intelligence for faster certification. Real-time analysis, error detection, and personalized recommendations.</p>
-      <div class="product-features">
-        <div class="feature">
-          <h4>📄 Document Upload & Analysis</h4>
-          <p>Upload PDFs, docs, or text files for instant LEED compliance checking.</p>
+      <div class="section-container">
+        <div class="section-header">
+          <span class="section-tag">Our First Product</span>
+          <h2 class="section-title">Introducing Albedo AI</h2>
+          <p class="section-subtitle">Smart LEED intelligence for faster certification. Real-time analysis, error detection, and personalized recommendations—all powered by advanced AI infrastructure.</p>
         </div>
-        <div class="feature">
-          <h4>💬 Interactive AI Chat</h4>
-          <p>Ask questions about credits, get recommendations, and clarify requirements.</p>
+        <div class="product-features">
+          <div class="feature">
+            <div class="icon-wrapper">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <rect x="16" y="12" width="32" height="40" rx="2" fill="#BF5700" opacity="0.1"/>
+                <path d="M20 20H44M20 28H44M20 36H36" stroke="#BF5700" stroke-width="3" stroke-linecap="round"/>
+                <path d="M24 48L28 52L40 40" stroke="#BF5700" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h4>Document Upload & Analysis</h4>
+            <p>Upload PDFs, docs, or text files for instant LEED compliance checking.</p>
+          </div>
+          <div class="feature">
+            <div class="icon-wrapper">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <circle cx="32" cy="32" r="20" fill="#BF5700" opacity="0.1"/>
+                <path d="M24 32L30 38L40 26" stroke="#BF5700" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="32" cy="32" r="2" fill="#BF5700"/>
+              </svg>
+            </div>
+            <h4>Interactive AI Chat</h4>
+            <p>Ask questions about credits, get recommendations, and clarify requirements.</p>
+          </div>
+          <div class="feature">
+            <div class="icon-wrapper">
+              <svg class="flat-icon" viewBox="0 0 64 64" fill="none">
+                <rect x="12" y="20" width="40" height="32" rx="4" fill="#BF5700" opacity="0.1"/>
+                <path d="M20 32L28 40L44 24" stroke="#BF5700" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="32" cy="16" r="6" fill="#BF5700"/>
+              </svg>
+            </div>
+            <h4>Credit Optimization</h4>
+            <p>Identify missed opportunities and suggest strategies to maximize LEED points.</p>
+          </div>
         </div>
-        <div class="feature">
-          <h4>📊 Credit Optimization</h4>
-          <p>Identify missed opportunities and suggest strategies to maximize LEED points.</p>
+        <div class="product-cta">
+          <button id="try-demo" class="btn primary large">Explore Albedo AI →</button>
         </div>
       </div>
-      <button id="try-demo" class="btn primary large">Try Albedo AI Demo →</button>
     </section>
 
     <!-- Why Now -->
     <section class="why-now-section">
-      <h2>Why Now</h2>
-      <p>Perfect timing meets growing demand for sustainable building certification.</p>
-      <div class="stats-grid">
-        <div class="stat">
-          <span class="stat-number">70%</span>
-          <span class="stat-label">Time Saved on Reviews</span>
+      <div class="section-container">
+        <div class="section-header">
+          <h2 class="section-title">Why Now</h2>
+          <p class="section-subtitle">Perfect timing meets perfect market conditions</p>
         </div>
-        <div class="stat">
-          <span class="stat-number">85%</span>
-          <span class="stat-label">Higher Certification Rates</span>
-        </div>
-        <div class="stat">
-          <span class="stat-number">50+</span>
-          <span class="stat-label">LEED Credits Analyzed</span>
-        </div>
-        <div class="stat">
-          <span class="stat-number">24/7</span>
-          <span class="stat-label">AI Availability</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Demo Section -->
-    <section id="demo" class="demo-section">
-      <div class="demo-container">
-        <h2>🤖 Try Albedo AI Assistant</h2>
-        <p>Upload LEED documents or ask questions about credits and compliance</p>
-        
-        <div class="chat-shell">
-          <div class="chat-header">
-            <div>
-              <strong>Albedo Demo</strong>
-              <div class="muted">AI-powered LEED assistant • Real-time analysis</div>
-            </div>
-            <div class="chat-actions">
-              <label class="upload-btn">
-                <input id="file-input" type="file" accept=".pdf,.docx,.txt" />
-                📄 Upload doc
-              </label>
-              <button id="clear-chat" class="btn small">🗑️ Clear</button>
-            </div>
+        <div class="why-now-grid">
+          <div class="why-now-item">
+            <div class="why-now-number">70%+</div>
+            <div class="why-now-label">Time reduction on reviews</div>
           </div>
-
-          <div id="messages" class="messages" aria-live="polite">
-            <div class="message bot">👋 Hi! I'm Albedo, your AI-powered LEED assistant. Upload a document or ask me about LEED credits, compliance requirements, or recommendations!</div>
+          <div class="why-now-item">
+            <div class="why-now-number">85%</div>
+            <div class="why-now-label">Higher certification success</div>
           </div>
-
-          <form id="chat-form" class="chat-form" onsubmit="return false;">
-            <input id="chat-input" placeholder="Ask Albedo... (try: 'list credits', 'energy efficiency', 'analyze document')" autocomplete="off" />
-            <button id="send-btn" class="btn primary">🚀 Send</button>
-          </form>
+          <div class="why-now-item">
+            <div class="why-now-number">50+</div>
+            <div class="why-now-label">LEED credits analyzed</div>
+          </div>
+          <div class="why-now-item">
+            <div class="why-now-number">24/7</div>
+            <div class="why-now-label">AI availability</div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- FAQ -->
     <section class="faq-section">
-      <h2>Frequently Asked Questions</h2>
-      <div class="faq-grid">
-        <div class="faq-item">
-          <h4>What is Albedo?</h4>
-          <p>Albedo is an AI-powered assistant that analyzes LEED documentation, detects errors, and provides recommendations to improve certification readiness.</p>
+      <div class="section-container">
+        <div class="section-header">
+          <h2 class="section-title">Frequently Asked Questions</h2>
+          <p class="section-subtitle">Everything you need to know about Albedo</p>
         </div>
-        <div class="faq-item">
-          <h4>How does it work?</h4>
-          <p>Upload your LEED-related documents, and Albedo uses advanced AI to scan for compliance issues, suggest improvements, and answer questions about credits.</p>
-        </div>
-        <div class="faq-item">
-          <h4>Is it accurate?</h4>
-          <p>Albedo is trained on official LEED v4 documentation and continuously improves. However, always verify AI suggestions with certified professionals.</p>
-        </div>
-        <div class="faq-item">
-          <h4>What file types are supported?</h4>
-          <p>Currently supports PDF, DOCX, and TXT files. More formats coming soon.</p>
+        <div class="faq-grid">
+          <div class="faq-item">
+            <h4>What is Albedo and how does it work?</h4>
+            <p>Albedo is an AI-powered assistant that analyzes LEED documentation, detects errors, and provides recommendations to improve certification readiness. Here's how it works:</p>
+            <ul>
+              <li><strong>Document Upload:</strong> Upload your LEED-related documents (PDF, DOCX, TXT)</li>
+              <li><strong>AI Analysis:</strong> Our AI scans documents for compliance issues and opportunities</li>
+              <li><strong>Recommendations:</strong> Get actionable suggestions to maximize LEED points</li>
+              <li><strong>Interactive Chat:</strong> Ask questions about credits and get instant answers</li>
+            </ul>
+            <p><strong>Bonus:</strong> Reduce review time by 70% and increase certification success rates.</p>
+          </div>
+          <div class="faq-item">
+            <h4>How accurate is Albedo?</h4>
+            <p>Albedo is trained on official LEED v4 documentation and continuously improves. However, always verify AI suggestions with certified professionals.</p>
+          </div>
+          <div class="faq-item">
+            <h4>What file types are supported?</h4>
+            <p>Currently supports PDF, DOCX, and TXT files. More formats coming soon.</p>
+          </div>
+          <div class="faq-item">
+            <h4>Do I need to pay anything upfront?</h4>
+            <p>This is a demo version. Contact us for pricing information and enterprise solutions.</p>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Footer -->
     <footer class="site-footer">
-      <div class="footer-content">
-        <div class="footer-section">
-          <h4>Product</h4>
-          <a href="#demo">Demo</a>
-          <a href="#features">Features</a>
-          <a href="#about">About</a>
+      <div class="footer-container">
+        <div class="footer-brand">
+          <div class="footer-logo">Albedo</div>
+          <p>We partner with LEED consultants to accelerate certification with AI-powered analysis and recommendations. Faster reviews, fewer errors, better outcomes.</p>
         </div>
-        <div class="footer-section">
-          <h4>Resources</h4>
-          <a href="#">LEED Guide</a>
-          <a href="#">Documentation</a>
-          <a href="#">Support</a>
-        </div>
-        <div class="footer-section">
-          <h4>Company</h4>
-          <a href="#">Contact</a>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
+        <div class="footer-content">
+          <div class="footer-section">
+            <h4>Product</h4>
+            <a href="#demo">Demo</a>
+            <a href="#features">Features</a>
+            <a href="#about">About</a>
+          </div>
+          <div class="footer-section">
+            <h4>Resources</h4>
+            <a href="#">LEED Guide</a>
+            <a href="#">Documentation</a>
+            <a href="#">Support</a>
+          </div>
+          <div class="footer-section">
+            <h4>Company</h4>
+            <a href="#">Contact</a>
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+          </div>
         </div>
       </div>
       <div class="copyright">
