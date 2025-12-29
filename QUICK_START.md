@@ -2,21 +2,41 @@
 
 ## 🚀 Start Everything in 2 Steps
 
-### Step 1: Start Backend
+### Option 1: Local Development (Backend only accessible locally)
+
+**Step 1: Start Backend**
 ```bash
 python start_backend.py
 ```
 Backend runs on: `http://localhost:5000`
 
-### Step 2: Open Frontend
-**Option A:** Open `demo_landing_page/index.html` directly in browser
-
-**Option B:** Use local server
+**Step 2: Open Frontend**
+Open `demo_landing_page/index.html` directly in browser
+Or use local server:
 ```bash
 cd demo_landing_page
 python -m http.server 8000
 ```
-Then open: `http://localhost:8000`
+
+### Option 2: Public Access with ngrok (For demos/sharing)
+
+**Step 1: Start Backend + ngrok**
+```bash
+python start_with_ngrok.py
+```
+This will:
+- Start your backend
+- Create public ngrok URL
+- Show you the URL to use
+
+**Step 2: Update Config (if needed)**
+The script tries to auto-update, but if not:
+```bash
+python update_ngrok_url.py
+```
+
+**Step 3: Open Frontend**
+Open `demo_landing_page/index.html` or visit: https://aritrode29.github.io/Albedo/
 
 ## ✅ Verify It Works
 
