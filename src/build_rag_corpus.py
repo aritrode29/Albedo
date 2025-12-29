@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 # -------------------------
 
 def setup_logging() -> None:
-	logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+	logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', force=True)
 
 
 def read_lines_jsonl(path: str) -> List[Dict[str, Any]]:
@@ -70,7 +70,10 @@ def normalize_chunk(text: str, metadata: Dict[str, Any], source: str, doc_label:
 
 
 def build_chunks_from_credits_json(path: str) -> List[Dict[str, Any]]:
-	"""Use KnowledgeBaseBuilder formatting if available; otherwise basic fallback."""
+	"""
+	Use enhanced chunking with heading-based splitting and structured metadata.
+	Falls back to basic chunking if enhanced module not available.
+	"""
 	chunks: List[Dict[str, Any]] = []
 	try:
 		with open(path, 'r', encoding='utf-8') as f:
@@ -79,6 +82,20 @@ def build_chunks_from_credits_json(path: str) -> List[Dict[str, Any]]:
 		logger.warning(f"Failed to read credits JSON {path}: {e}")
 		return chunks
 	
+	# Try to use enhanced chunking
+	try:
+		from enhanced_chunking import to_enhanced_rag_chunks
+		enhanced_chunks = to_enhanced_rag_chunks(credits)
+		# Normalize and add source info
+		for chunk in enhanced_chunks:
+			chunk['metadata']['source'] = 'credits'
+			chunk['metadata']['doc'] = os.path.basename(path)
+			chunks.append(chunk)
+		return chunks
+	except (ImportError, Exception) as e:
+		logger.warning(f"Enhanced chunking not available ({e}), using basic chunking")
+	
+	# Fallback to basic chunking
 	if KnowledgeBaseBuilder is not None:
 		builder = KnowledgeBaseBuilder()
 		# Recreate text formatting from credits
@@ -230,6 +247,47 @@ def build_faiss_index(chunks: List[Dict[str, Any]], embedder: SentenceTransforme
 	faiss.write_index(index, f"{out_prefix}.faiss")
 	with open(f"{out_prefix}.json", 'w', encoding='utf-8') as f:
 		json.dump(chunks, f, indent=2, ensure_ascii=False)
+	
+	# Build and save BM25 index
+	try:
+		# Check if rank-bm25 is available directly
+		try:
+			from rank_bm25 import BM25Okapi
+			has_rank_bm25 = True
+		except ImportError:
+			has_rank_bm25 = False
+			logger.warning(f"rank-bm25 not installed for {out_prefix}. Install with: pip install rank-bm25")
+		
+		if has_rank_bm25:
+			# Import from src directory
+			import sys
+			src_dir = os.path.dirname(os.path.abspath(__file__))
+			if src_dir not in sys.path:
+				sys.path.insert(0, src_dir)
+			from bm25_index import BM25Index
+			
+			logger.info(f"Building BM25 index for {out_prefix} ({len(chunks)} chunks)...")
+			bm25 = BM25Index()
+			if bm25.build_index(chunks):
+				logger.info(f"BM25 index built, saving to {out_prefix}.bm25...")
+				if bm25.save_index(out_prefix):
+					bm25_file = f"{out_prefix}.bm25"
+					if os.path.exists(bm25_file):
+						file_size = os.path.getsize(bm25_file)
+						logger.info(f"✓ Built BM25 index: {bm25_file} ({file_size:,} bytes)")
+					else:
+						logger.error(f"✗ BM25 file not created: {bm25_file}")
+				else:
+					logger.error(f"✗ BM25 index save returned False for {out_prefix}")
+			else:
+				logger.error(f"✗ BM25 index build returned False for {out_prefix}")
+	except ImportError as e:
+		logger.warning(f"BM25 module import failed for {out_prefix}: {e}")
+	except Exception as e:
+		logger.error(f"BM25 index build error for {out_prefix}: {e}")
+		import traceback
+		logger.error(traceback.format_exc())
+	
 	return True, vecs.shape[0], vecs.shape[1]
 
 
@@ -262,10 +320,11 @@ def main():
 			logger.warning(f"No data for {source_key}; index not created")
 
 	logger.info("Unified corpus + multi-index build complete.")
-	print("\n🎉 Unified corpus + multi-index build complete!")
+	print("\nUnified corpus + multi-index build complete!")
 	for source_key, out_prefix in index_specs:
 		exists = os.path.exists(f"{out_prefix}.faiss")
-		print(f"  - {source_key}: {'✅' if exists else '⚠️ missing'} -> {out_prefix}.faiss")
+		status = "OK" if exists else "missing"
+		print(f"  - {source_key}: {status} -> {out_prefix}.faiss")
 
 if __name__ == '__main__':
 	main()

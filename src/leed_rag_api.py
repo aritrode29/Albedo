@@ -43,9 +43,11 @@ class LEEDRAGAPI:
         self.index = None
         self.chunks = []
         self.loaded = False
-        # Multi-index store: source -> {index, chunks}
+        # Multi-index store: source -> {index, chunks, bm25_index}
         self.multi: Dict[str, Dict[str, Any]] = {}
         self.available_sources: List[str] = []
+        # BM25 indices: source -> BM25Index
+        self.bm25_indices: Dict[str, Any] = {}
         
     def _load_multi_indices(self) -> None:
         """Try to load multi-index set if available."""
@@ -67,6 +69,17 @@ class LEEDRAGAPI:
                     with open(metadata_path, 'r', encoding='utf-8') as f:
                         chunks = json.load(f)
                     self.multi[source] = {'index': idx, 'chunks': chunks}
+                    
+                    # Try to load BM25 index
+                    try:
+                        from bm25_index import BM25Index
+                        bm25 = BM25Index()
+                        if bm25.load_index(prefix):
+                            self.bm25_indices[source] = bm25
+                            self.logger.info(f"Loaded BM25 index for {source}")
+                    except Exception as e:
+                        self.logger.debug(f"BM25 index not available for {source}: {e}")
+                    
                     self.available_sources.append(source)
             if self.available_sources:
                 self.logger.info(f"Loaded multi-index sources: {', '.join(self.available_sources)}")
@@ -258,8 +271,21 @@ class LEEDRAGAPI:
             # #endregion
             return []
     
-    def search(self, query: str, k: int = 5, sources: Optional[List[str]] = None) -> List[Dict[str, Any]]:
-        """Search relevant chunks. If sources provided and multi-index is available, merge top-k."""
+    def search(self, query: str, k: int = 5, sources: Optional[List[str]] = None, 
+               use_grouping: bool = True, top_credits: int = 3,
+               use_query_expansion: bool = True, max_subqueries: int = 6) -> List[Dict[str, Any]]:
+        """
+        Search relevant chunks with query expansion, RRF fusion, deduplication and grouping.
+        
+        Args:
+            query: Search query
+            k: Number of results to return
+            sources: Optional list of source indices to search
+            use_grouping: If True, deduplicate and group by credit
+            top_credits: Number of top credits to return when grouping (2-4)
+            use_query_expansion: If True, expand query into multiple sub-queries and fuse with RRF
+            max_subqueries: Maximum number of sub-queries to generate (default: 6)
+        """
         # #region agent log
         import json as json_lib
         try:
@@ -300,6 +326,19 @@ class LEEDRAGAPI:
                     # #endregion
                     return []
             
+            # Query expansion and RRF fusion
+            queries_to_search = [query]
+            if use_query_expansion:
+                try:
+                    from query_expansion import expand_query
+                    expanded_queries = expand_query(query, max_subqueries=max_subqueries)
+                    if len(expanded_queries) > 1:
+                        queries_to_search = expanded_queries
+                        self.logger.info(f"Expanded query into {len(queries_to_search)} sub-queries")
+                except Exception as e:
+                    self.logger.warning(f"Query expansion failed: {e}, using original query")
+                    queries_to_search = [query]
+            
             # Multi-index path with source filtering
             if self.multi and (sources or self.available_sources):
                 use_sources = sources or ['all']
@@ -308,39 +347,104 @@ class LEEDRAGAPI:
                 if not use_sources:
                     use_sources = ['all'] if 'all' in self.multi else [self.available_sources[0]]
                 
-                self.logger.info(f"Searching sources: {use_sources} for query: {query[:50]}")
-                merged: List[Dict[str, Any]] = []
-                # Search with higher k to get more candidates, then re-rank
+                self.logger.info(f"Searching sources: {use_sources} for {len(queries_to_search)} query(ies)")
+                
+                # Search each query and collect results
+                query_results: Dict[str, List[Dict[str, Any]]] = {}
                 search_k = min(k * 3, 20)  # Get 3x results for better semantic matching
-                for s in use_sources:
-                    idx = self.multi[s]['index']
-                    chks = self.multi[s]['chunks']
-                    self.logger.debug(f"Source {s}: index size={idx.ntotal if hasattr(idx, 'ntotal') else 'unknown'}, chunks={len(chks)}")
-                    res = self._search_index(idx, chks, query, search_k)
-                    self.logger.debug(f"Source {s} returned {len(res)} results")
-                    # annotate provenance
-                    for r in res:
-                        r['metadata'] = dict(r.get('metadata', {}))
-                        r['metadata']['source'] = r['metadata'].get('source', s)
-                        r['metadata']['_index'] = s
-                    merged.extend(res)
-                # Sort by score desc and take top k
+                
+                for sub_query in queries_to_search:
+                    merged: List[Dict[str, Any]] = []
+                    for s in use_sources:
+                        idx = self.multi[s]['index']
+                        chks = self.multi[s]['chunks']
+                        self.logger.debug(f"Source {s}: index size={idx.ntotal if hasattr(idx, 'ntotal') else 'unknown'}, chunks={len(chks)}")
+                        
+                        # Dense search (FAISS)
+                        dense_res = self._search_index(idx, chks, sub_query, search_k)
+                        
+                        # Lexical search (BM25) if available and hybrid enabled
+                        if use_hybrid and s in self.bm25_indices:
+                            try:
+                                bm25 = self.bm25_indices[s]
+                                lexical_res = bm25.search(sub_query, k=search_k)
+                                
+                                # Fuse dense and lexical results
+                                from hybrid_retrieval import weighted_fusion, rrf_fusion_hybrid
+                                if fusion_method == 'rrf':
+                                    res = rrf_fusion_hybrid(dense_res, lexical_res, k=60)
+                                else:
+                                    res = weighted_fusion(dense_res, lexical_res, dense_weight, lexical_weight)
+                                
+                                self.logger.debug(f"Hybrid search: {len(dense_res)} dense + {len(lexical_res)} lexical = {len(res)} fused")
+                            except Exception as e:
+                                self.logger.warning(f"Hybrid search failed for {s}: {e}, using dense only")
+                                res = dense_res
+                        else:
+                            res = dense_res
+                        
+                        self.logger.debug(f"Source {s} returned {len(res)} results for query: {sub_query[:50]}")
+                        # annotate provenance
+                        for r in res:
+                            r['metadata'] = dict(r.get('metadata', {}))
+                            r['metadata']['source'] = r['metadata'].get('source', s)
+                            r['metadata']['_index'] = s
+                            r['metadata']['_query'] = sub_query  # Track which query found this
+                        merged.extend(res)
+                    query_results[sub_query] = merged
+                
+                # Fuse results using RRF if multiple queries
+                if len(query_results) > 1:
+                    try:
+                        from reciprocal_rank_fusion import fuse_results_with_rrf
+                        merged = fuse_results_with_rrf(query_results, k=60)
+                        self.logger.info(f"Fused {len(query_results)} query results using RRF: {len(merged)} total results")
+                    except Exception as e:
+                        self.logger.warning(f"RRF fusion failed: {e}, using simple merge")
+                        # Fallback: simple merge by score
+                        merged = []
+                        for res_list in query_results.values():
+                            merged.extend(res_list)
+                        merged.sort(key=lambda x: x.get('score', 0.0), reverse=True)
+                else:
+                    # Single query, no fusion needed
+                    merged = list(query_results.values())[0]
+                # Sort by score desc
                 merged.sort(key=lambda x: x.get('score', 0.0), reverse=True)
                 # Filter low-quality results (score threshold)
                 filtered = [r for r in merged if r.get('score', 0.0) > 0.3]  # Minimum similarity threshold
                 if not filtered:
-                    filtered = merged[:k]  # Fallback to top k if all scores are low
-                # Re-rank and limit to k
-                for i, r in enumerate(filtered[:k]):
+                    filtered = merged[:k * 2]  # Get more candidates for grouping
+                
+                # Apply deduplication and grouping if enabled
+                if use_grouping and self.embedder and len(filtered) > 1:
+                    try:
+                        from result_deduplication import deduplicate_and_group
+                        filtered = deduplicate_and_group(
+                            filtered,
+                            self.embedder,
+                            top_credits=top_credits,
+                            max_chunks_per_credit=max(2, k // top_credits),
+                            similarity_threshold=0.97
+                        )
+                        self.logger.info(f"Applied deduplication and grouping: {len(filtered)} results")
+                    except Exception as e:
+                        self.logger.warning(f"Deduplication/grouping failed: {e}, using original results")
+                
+                # Limit to k results
+                final_results = filtered[:k]
+                # Re-rank and update ranks
+                for i, r in enumerate(final_results):
                     r['rank'] = i + 1
-                self.logger.info(f"Search completed: {len(filtered[:k])} results for query: {query[:50]}")
+                
+                self.logger.info(f"Search completed: {len(final_results)} results for query: {query[:50]}")
                 # #region agent log
                 try:
                     with open(r"g:\My Drive\UT_Austin_MSSD\Proposals\GreenFund\03 LEED Tool\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json_lib.dumps({"location":"leed_rag_api.py:195","message":"search multi-index return","data":{"results_count":len(filtered[:k]),"merged_total":len(merged),"filtered_count":len(filtered)},"timestamp":int(__import__("time").time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"H6"})+"\n")
+                        f.write(json_lib.dumps({"location":"leed_rag_api.py:195","message":"search multi-index return","data":{"results_count":len(final_results),"merged_total":len(merged),"filtered_count":len(filtered)},"timestamp":int(__import__("time").time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"H6"})+"\n")
                 except: pass
                 # #endregion
-                return filtered[:k]
+                return final_results
             
             # Legacy single-index
             if not self.index or not self.chunks:
@@ -352,20 +456,99 @@ class LEEDRAGAPI:
                 except: pass
                 # #endregion
                 return []
-            # Search with higher k for better semantic matching
+            
+            # Search each query and collect results
+            query_results: Dict[str, List[Dict[str, Any]]] = {}
             search_k = min(k * 3, 20)
-            result = self._search_index(self.index, self.chunks, query, search_k)
+            
+            # Check if BM25 is available for legacy index
+            bm25_available = False
+            try:
+                from bm25_index import BM25Index
+                bm25 = BM25Index()
+                if bm25.load_index(self.index_path):
+                    bm25_available = True
+            except Exception:
+                pass
+            
+            for sub_query in queries_to_search:
+                # Dense search (FAISS)
+                dense_result = self._search_index(self.index, self.chunks, sub_query, search_k)
+                
+                # Lexical search (BM25) if available and hybrid enabled
+                if use_hybrid and bm25_available:
+                    try:
+                        lexical_result = bm25.search(sub_query, k=search_k)
+                        
+                        # Fuse dense and lexical results
+                        from hybrid_retrieval import weighted_fusion, rrf_fusion_hybrid
+                        if fusion_method == 'rrf':
+                            result = rrf_fusion_hybrid(dense_result, lexical_result, k=60)
+                        else:
+                            result = weighted_fusion(dense_result, lexical_result, dense_weight, lexical_weight)
+                        
+                        self.logger.debug(f"Hybrid search: {len(dense_result)} dense + {len(lexical_result)} lexical = {len(result)} fused")
+                    except Exception as e:
+                        self.logger.warning(f"Hybrid search failed: {e}, using dense only")
+                        result = dense_result
+                else:
+                    result = dense_result
+                
+                # Annotate with query
+                for r in result:
+                    r['metadata'] = dict(r.get('metadata', {}))
+                    r['metadata']['_query'] = sub_query
+                query_results[sub_query] = result
+            
+            # Fuse results using RRF if multiple queries
+            if len(query_results) > 1:
+                try:
+                    from reciprocal_rank_fusion import fuse_results_with_rrf
+                    filtered = fuse_results_with_rrf(query_results, k=60)
+                    self.logger.info(f"Fused {len(query_results)} query results using RRF: {len(filtered)} total results")
+                except Exception as e:
+                    self.logger.warning(f"RRF fusion failed: {e}, using simple merge")
+                    # Fallback: simple merge by score
+                    filtered = []
+                    for res_list in query_results.values():
+                        filtered.extend(res_list)
+                    filtered.sort(key=lambda x: x.get('score', 0.0), reverse=True)
+            else:
+                # Single query, no fusion needed
+                filtered = list(query_results.values())[0]
             # Filter low-quality results
             filtered = [r for r in result if r.get('score', 0.0) > 0.3]
             if not filtered:
-                filtered = result[:k]
+                filtered = result[:k * 2]  # Get more candidates for grouping
+            
+            # Apply deduplication and grouping if enabled
+            if use_grouping and self.embedder and len(filtered) > 1:
+                try:
+                    from result_deduplication import deduplicate_and_group
+                    filtered = deduplicate_and_group(
+                        filtered,
+                        self.embedder,
+                        top_credits=top_credits,
+                        max_chunks_per_credit=max(2, k // top_credits),
+                        similarity_threshold=0.97
+                    )
+                    self.logger.info(f"Applied deduplication and grouping: {len(filtered)} results")
+                except Exception as e:
+                    self.logger.warning(f"Deduplication/grouping failed: {e}, using original results")
+            
+            # Limit to k results
+            final_results = filtered[:k]
+            # Re-rank and update ranks
+            for i, r in enumerate(final_results):
+                r['rank'] = i + 1
+            
             # #region agent log
             try:
                 with open(r"g:\My Drive\UT_Austin_MSSD\Proposals\GreenFund\03 LEED Tool\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json_lib.dumps({"location":"leed_rag_api.py:201","message":"search legacy return","data":{"results_count":len(filtered[:k]),"original_count":len(result)},"timestamp":int(__import__("time").time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"H6"})+"\n")
+                    f.write(json_lib.dumps({"location":"leed_rag_api.py:201","message":"search legacy return","data":{"results_count":len(final_results),"original_count":len(result)},"timestamp":int(__import__("time").time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"H6"})+"\n")
             except: pass
             # #endregion
-            return filtered[:k]
+            return final_results
         except Exception as e:
             self.logger.error(f"Error searching: {e}")
             import traceback
@@ -418,12 +601,12 @@ def home():
         <p>Check API status and system health</p>
     </div>
     
-    <div class="endpoint">
+        <div class="endpoint">
         <h3><span class="method">POST</span> /api/query</h3>
-        <p>Query the LEED knowledge base</p>
+        <p>Query the LEED knowledge base with hybrid retrieval (dense + lexical), query expansion, RRF fusion, deduplication and grouping</p>
         <div class="example">
             <strong>Request:</strong><br>
-            { "query": "What are the requirements for energy efficiency credits?", "limit": 3, "sources": ["credits","guide"] }
+            { "query": "EA Minimum Energy Performance ASHRAE 90.1", "limit": 5, "sources": ["credits","guide"], "use_hybrid": true, "fusion_method": "weighted", "dense_weight": 0.7, "lexical_weight": 0.3, "use_query_expansion": true, "max_subqueries": 6, "use_grouping": true, "top_credits": 3 }
         </div>
     </div>
     
@@ -498,6 +681,14 @@ def api_query():
         # Increase limit for better semantic matching (will filter later)
         search_limit = max(limit, 5)  # Minimum 5 results
         sources = data.get('sources')  # optional list
+        use_grouping = data.get('use_grouping', True)  # Enable grouping by default
+        top_credits = data.get('top_credits', 3)  # Number of top credits to return
+        use_query_expansion = data.get('use_query_expansion', True)  # Enable query expansion by default
+        max_subqueries = data.get('max_subqueries', 6)  # Maximum sub-queries to generate
+        use_hybrid = data.get('use_hybrid', True)  # Enable hybrid retrieval by default
+        fusion_method = data.get('fusion_method', 'weighted')  # 'weighted' or 'rrf'
+        dense_weight = data.get('dense_weight', 0.7)  # Weight for dense scores
+        lexical_weight = data.get('lexical_weight', 0.3)  # Weight for lexical scores
         
         # #region agent log
         try:
@@ -509,9 +700,13 @@ def api_query():
         if not query.strip():
             return jsonify({'error': 'Query cannot be empty'}), 400
         
-        # Search using RAG system (with optional sources)
+        # Search using RAG system (with optional sources, grouping, query expansion, and hybrid retrieval)
         # Use higher k for better semantic matching, then filter to limit
-        results = rag_api.search(query, k=search_limit, sources=sources)
+        results = rag_api.search(query, k=search_limit, sources=sources, 
+                                use_grouping=use_grouping, top_credits=top_credits,
+                                use_query_expansion=use_query_expansion, max_subqueries=max_subqueries,
+                                use_hybrid=use_hybrid, fusion_method=fusion_method,
+                                dense_weight=dense_weight, lexical_weight=lexical_weight)
         
         # #region agent log
         try:

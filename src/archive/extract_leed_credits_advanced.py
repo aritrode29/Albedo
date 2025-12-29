@@ -589,7 +589,30 @@ def parse_pdf(pdf_path: str, logger: logging.Logger) -> Tuple[List[CreditRecord]
 # -------------------------
 
 def to_rag_chunks(credits: List[CreditRecord]) -> List[Dict[str, Any]]:
-    """Enhanced RAG-ready chunking with more metadata"""
+    """
+    Enhanced RAG-ready chunking with heading-based splitting and structured metadata.
+    Uses enhanced_chunking module for section-based chunking.
+    """
+    try:
+        # Try to use enhanced chunking if available
+        import sys
+        import os
+        # Add parent directory to path to import enhanced_chunking
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+        from enhanced_chunking import to_enhanced_rag_chunks
+        return to_enhanced_rag_chunks(credits)
+    except (ImportError, Exception) as e:
+        # Fallback to basic chunking if enhanced module not available
+        if logger:
+            logger.warning(f"Enhanced chunking module not available ({e}), using basic chunking")
+        return _to_rag_chunks_basic(credits)
+
+
+def _to_rag_chunks_basic(credits: List[CreditRecord]) -> List[Dict[str, Any]]:
+    """Basic RAG-ready chunking (fallback)"""
     chunks = []
     for c in credits:
         meta = {

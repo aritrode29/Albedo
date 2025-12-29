@@ -15,6 +15,7 @@ faiss-cpu>=1.7.4
 transformers>=4.30.0
 torch>=2.0.0
 numpy>=1.24.0
+rank-bm25>=0.2.0
 
 # GIS and location analysis
 geopandas>=0.13.0

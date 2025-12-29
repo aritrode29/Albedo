@@ -66,8 +66,99 @@ class ChunkGenerator:
         
         return chunks
     
-    def chunk_pdf_pages(self, extraction: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Chunk PDF pages with page-level metadata."""
+    def chunk_by_headings(self, text: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Chunk text by headings/sections. This prevents random informative notes 
+        from dominating search results by keeping sections separate.
+        """
+        import re
+        
+        # Common heading patterns for LEED documents
+        heading_patterns = [
+            (r'^Intent:?\s*$', 'intent'),
+            (r'^Requirements?:?\s*$', 'requirements'),
+            (r'^(Documentation|Submittals?):?\s*$', 'documentation'),
+            (r'^Points:?\s*$', 'thresholds'),
+            (r'^(Applicable Rating System|This credit applies to|Applicability):?\s*$', 'definitions'),
+            (r'^(Equations?|Calculation[s]?):?\s*$', 'calc'),
+            (r'^(Related Credits|Cross-References):?\s*$', 'definitions'),
+            (r'^(Exemplary Performance):?\s*$', 'definitions'),
+            (r'^(Referenced Standards|References):?\s*$', 'definitions'),
+            (r'^(Step-by-Step|Implementation):?\s*$', 'calc'),
+            (r'^(Guidance|Tips|Best Practices):?\s*$', 'definitions'),
+        ]
+        
+        lines = text.split('\n')
+        chunks = []
+        current_section = None
+        current_text = []
+        section_index = 0
+        
+        for line in lines:
+            line_stripped = line.strip()
+            matched_heading = False
+            
+            # Check if this line is a heading
+            for pattern, section_name in heading_patterns:
+                if re.match(pattern, line_stripped, re.I):
+                    # Save previous section if it has content
+                    if current_section and current_text:
+                        section_text = '\n'.join(current_text).strip()
+                        if len(section_text) >= self.min_chunk_size:
+                            chunk_metadata = metadata.copy()
+                            chunk_metadata.update({
+                                'section': section_name,
+                                'chunk_id': f"{metadata.get('credit_id', 'unknown')}-{section_name}-{section_index}",
+                                'chunk_hash': hashlib.md5(section_text.encode()).hexdigest()[:8]
+                            })
+                            chunks.append({
+                                'text': section_text,
+                                'metadata': chunk_metadata
+                            })
+                    
+                    # Start new section
+                    current_section = section_name
+                    current_text = [line_stripped]  # Include heading in text
+                    section_index += 1
+                    matched_heading = True
+                    break
+            
+            if not matched_heading:
+                if current_section:
+                    current_text.append(line)
+                else:
+                    # Content before any heading - add to a default section
+                    if not current_text:
+                        current_section = 'general'
+                        section_index = 0
+                    current_text.append(line)
+        
+        # Save last section
+        if current_section and current_text:
+            section_text = '\n'.join(current_text).strip()
+            if len(section_text) >= self.min_chunk_size:
+                chunk_metadata = metadata.copy()
+                chunk_metadata.update({
+                    'section': current_section,
+                    'chunk_id': f"{metadata.get('credit_id', 'unknown')}-{current_section}-{section_index}",
+                    'chunk_hash': hashlib.md5(section_text.encode()).hexdigest()[:8]
+                })
+                chunks.append({
+                    'text': section_text,
+                    'metadata': chunk_metadata
+                })
+        
+        # If no headings found, fall back to regular chunking
+        if not chunks:
+            return self.chunk_text(text, metadata)
+        
+        return chunks
+    
+    def chunk_pdf_pages(self, extraction: Dict[str, Any], use_headings: bool = True) -> List[Dict[str, Any]]:
+        """
+        Chunk PDF pages with page-level metadata.
+        If use_headings=True, attempts to chunk by headings within each page.
+        """
         chunks = []
         
         for page_data in extraction.get('text_content', []):
@@ -79,6 +170,8 @@ class ChunkGenerator:
                 'source_file': extraction.get('source_file', ''),
                 'file_type': 'pdf',
                 'page': page_data.get('page', 0),
+                'page_start': page_data.get('page', 0),
+                'page_end': page_data.get('page', 0),
                 'total_chars': page_data.get('total_chars', 0),
                 'has_images': any(img.get('page') == page_data.get('page') 
                                  for img in extraction.get('images', [])),
@@ -98,7 +191,12 @@ class ChunkGenerator:
                     'total_pages': pdf_meta.get('page_count', 0)
                 })
             
-            page_chunks = self.chunk_text(page_text, page_metadata)
+            # Try heading-based chunking first if enabled
+            if use_headings:
+                page_chunks = self.chunk_by_headings(page_text, page_metadata)
+            else:
+                page_chunks = self.chunk_text(page_text, page_metadata)
+            
             chunks.extend(page_chunks)
         
         return chunks
