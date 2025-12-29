@@ -21,7 +21,8 @@ class RAGDemo:
         self.assistant = RAGCreditAssistant()
 
     def run_demo_queries(self) -> None:
-        print("\n🏗️  LEED RAG System - Robust Demonstration")
+        # Use plain ASCII for compatibility with Windows terminals that do not support emoji.
+        print("\nLEED RAG System - Robust Demonstration")
         print("=" * 50)
 
         if not self.assistant.ready:
@@ -48,32 +49,32 @@ class RAGDemo:
             print(f"\n{'='*20} DEMO SCENARIO {i}/{len(scenarios)} {'='*20}")
             result = self.assistant.analyze(scenario["query"], scenario["evidence"], k=3)
 
-            print("\n📄 Answer with strict citations:")
+            print("\nAnswer with strict citations:")
             print(result["answer"])
 
-            print("\n🔗 Citations:")
+            print("\nCitations:")
             print(result["citations"])
 
             if result.get("evidence_classification"):
-                print("\n✅ Binary evidence classifier:")
+                print("\nBinary evidence classifier:")
                 print(result["evidence_classification"])
 
-            print("\n🧩 Credit template:")
+            print("\nCredit template:")
             print(result["template"])
 
             if i < len(scenarios):
-                print("\n" + "⏳" * 20 + " Next scenario..." + "⏳" * 20)
+                print("\n" + "-" * 20 + " Next scenario... " + "-" * 20)
 
 
 def main() -> None:
     setup_logging()
     demo = RAGDemo()
     demo.run_demo_queries()
-    print("\n🎉 RAG system demonstration completed!")
-    print("✅ Components exercised:")
-    print("   • RAG retrieval with top-k strict citations")
-    print("   • Credit templates hydrated from the catalog")
-    print("   • Binary evidence classifier scoring support vs. insufficiency")
+    print("\nRAG system demonstration completed!")
+    print("Components exercised:")
+    print("   - RAG retrieval with top-k strict citations")
+    print("   - Credit templates hydrated from the catalog")
+    print("   - Binary evidence classifier scoring support vs. insufficiency")
 
 
 if __name__ == "__main__":

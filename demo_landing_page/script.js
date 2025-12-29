@@ -139,6 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function queryRAGAPI(query) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:141',message:'queryRAGAPI entry',data:{query:query},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+    // #endregion
     try {
       const response = await fetch(`${RAG_API_URL}/api/query`, {
         method: 'POST',
@@ -151,15 +154,76 @@ document.addEventListener('DOMContentLoaded', () => {
         })
       });
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:154',message:'queryRAGAPI response status',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
+      
       if (!response.ok) {
         throw new Error(`API request failed: ${response.status}`);
       }
       
       const data = await response.json();
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:162',message:'queryRAGAPI response data',data:{hasError:!!data.error,resultsCount:data.results?data.results.length:0,status:data.status,query:data.query},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
+      
       return data;
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:166',message:'queryRAGAPI error',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
       console.error('RAG API Error:', error);
       return { error: true, message: `${error}` };
+    }
+  }
+
+  async function queryAssistantAPI(query, evidenceText) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:166',message:'queryAssistantAPI entry',data:{query:query,hasEvidence:!!evidenceText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+    // #endregion
+    // High-level robust assistant: templates + evidence classifier + strict citations.
+    try {
+      const response = await fetch(`${RAG_API_URL}/api/assistant`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: query,
+          evidence_text: evidenceText || null,
+          limit: 4
+        })
+      });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:181',message:'queryAssistantAPI response status',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
+
+      if (!response.ok && response.status !== 200) {
+        // Only return null for actual errors (not 200 with error message)
+        console.warn('Assistant API request failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:192',message:'queryAssistantAPI response data',data:{status:data.status,hasAnswer:!!data.answer,retrievedCount:data.retrieved?data.retrieved.length:0,hasError:!!data.error,fallbackAvailable:data.fallback_available},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
+      
+      // If assistant returned error but suggests fallback, return null to trigger fallback
+      if (data.status !== 'success' || data.fallback_available) {
+        console.warn('Assistant API returned non-success status or fallback suggested:', data.status);
+        return null;
+      }
+      return data;
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:199',message:'queryAssistantAPI error',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
+      console.error('Assistant API Error:', error);
+      return null;
     }
   }
 
@@ -215,15 +279,19 @@ document.addEventListener('DOMContentLoaded', () => {
     messagesEl.scrollTop = messagesEl.scrollHeight;
     
     try {
-      // Command: list credits
-      if (/(^|\b)(list|show) (all )?credits(\b|$)/i.test(prompt)) {
+      // Command: list credits - improved pattern to match "list all LEED credits"
+      // #region agent log
+      const isListCredits = /(^|\b)(list|show)(\s+all)?(\s+LEED)?(\s+credits?)(\b|$)/i.test(prompt);
+      fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:281',message:'list credits pattern check',data:{prompt:prompt,matches:isListCredits},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
+      if (isListCredits) {
         const resp = await fetchCredits();
         if (resp && !resp.error && resp.credits && resp.credits.length) {
-          appendMessage(`Found ${resp.total_count} credits. Showing first 20:`);
+          appendMessage(`Great! I found ${resp.total_count} LEED credits in the knowledge base. Here are the first 20 credits:\n\n`);
           resp.credits.slice(0, 20).forEach((c, i) => {
-            appendMessage(`${i + 1}. ${c.code || 'N/A'} — ${c.name || 'Unnamed'} (${c.type || 'Credit'})`);
+            appendMessage(`${i + 1}. **${c.code || 'N/A'}** — ${c.name || 'Unnamed'} (${c.type || 'Credit'})`);
           });
-          appendMessage('Tip: ask for a specific credit (e.g., "EA Optimize Energy Performance").');
+          appendMessage('\n**Tip:** You can ask me about any specific credit for detailed information. For example, try asking "Tell me about EA Optimize Energy Performance" or "What are the requirements for WE Indoor Water Use Reduction?"');
         } else {
           const healthy = await checkApiStatus();
           if (!healthy) {
@@ -237,75 +305,183 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if(p.includes('analy') || p.includes('scan')){
         if (uploadedDocument) {
-          appendMessage('Analyzing uploaded document against LEED requirements...');
+          appendMessage('I\'m analyzing your uploaded document against LEED requirements. This may take a moment...');
           
           const analysisData = await analyzeDocument(uploadedDocument);
           if (analysisData && !analysisData.error) {
-            appendMessage(`Analysis complete for ${analysisData.analysis_results.length} credit categories:`);
+            appendMessage(`**Analysis Complete!**\n\nI've reviewed your document against ${analysisData.analysis_results.length} LEED credit categories. Here's what I found:\n`);
             
             analysisData.analysis_results.forEach(result => {
-              appendMessage(`\n📋 ${result.credit_code} Credit:`);
+              appendMessage(`**${result.credit_code} Credit:**`);
               if (result.relevant_info && result.relevant_info.length > 0) {
                 const topResult = result.relevant_info[0];
-                appendMessage(`   Requirements: ${topResult.text.substring(0, 200)}...`);
-                appendMessage(`   Relevance Score: ${topResult.score.toFixed(3)}`);
+                appendMessage(`The document appears to address: ${topResult.text.substring(0, 250)}${topResult.text.length > 250 ? '...' : ''}`);
+                appendMessage(`Relevance: ${(topResult.score * 100).toFixed(0)}% match\n`);
+              } else {
+                appendMessage(`No clear connection found to this credit category.\n`);
               }
             });
+            
+            appendMessage('Would you like me to provide more detailed information about any of these credits?');
           } else {
-            appendMessage('❌ Analysis failed. API may be offline.');
-            appendMessage('Tip: Start the API: python src/leed_rag_api.py');
+            appendMessage('I apologize, but I couldn\'t complete the analysis. The backend API may be offline.\n\n**To fix this:** Start the API server by running:\n```bash\npython src/leed_rag_api.py\n```\nThen reload this page and try again.');
           }
         } else {
-          appendMessage('Please upload a document first, then ask me to analyze it.');
-        }
-      } else if(p.includes('recommend')){
-        const ragData = await queryRAGAPI('LEED credit recommendations and best practices');
-        if (ragData && !ragData.error && ragData.results) {
-          appendMessage('Top LEED recommendations:');
-          ragData.results.forEach((result, index) => {
-            if (index < 2) {
-              appendMessage(`\n${index + 1}. ${result.metadata.credit_name || 'Credit'}:`);
-              appendMessage(`   ${result.text.substring(0, 150)}...`);
-            }
-          });
-        } else {
-          appendMessage('❌ Unable to get recommendations. API may be offline.');
-          appendMessage('Tip: Start the API: python src/leed_rag_api.py');
-        }
-      } else if(p.includes('energy')){
-        const ragData = await queryRAGAPI('energy efficiency requirements LEED credits');
-        if (ragData && !ragData.error && ragData.results) {
-          appendMessage('Energy efficiency requirements:');
-          ragData.results.forEach((result, index) => {
-            if (index < 2) {
-              appendMessage(`\n${index + 1}. ${result.metadata.credit_name || 'Credit'}:`);
-              appendMessage(`   ${result.text.substring(0, 150)}...`);
-            }
-          });
-        } else {
-          appendMessage('❌ Unable to get energy information. API may be offline.');
-          appendMessage('Tip: Start the API: python src/leed_rag_api.py');
+          appendMessage('I\'d be happy to analyze a document for you! Please upload a document first using the attachment button, then ask me to analyze it. I can help identify which LEED credits your document addresses and provide guidance on compliance.');
         }
       } else if(p.includes('hello') || p.includes('hi')){
-        appendMessage('Hello! I\'m Albedo with AI-powered LEED knowledge. Upload a document or ask me about LEED credits!');
+        appendMessage('Hello! I\'m Albedo, your AI-powered LEED certification assistant. I\'m here to help you understand LEED credits, analyze your project documentation, and guide you through the certification process. Feel free to ask me anything about LEED requirements, or upload a document and I can help analyze it for compliance. What would you like to know?');
       } else {
-        // General query to RAG API
-        const ragData = await queryRAGAPI(prompt);
-        if (ragData && !ragData.error && ragData.results) {
-          let response = `Found ${ragData.results.length} relevant result${ragData.results.length > 1 ? 's' : ''}:\n\n`;
-          ragData.results.forEach((result, index) => {
-            if (index < 3) {
-              response += `📋 **${result.metadata.credit_name || 'Credit'}**\n`;
-              response += `${result.text.substring(0, 250)}${result.text.length > 250 ? '...' : ''}\n\n`;
-            }
+        // General query: prefer robust assistant (templates + citations + evidence),
+        // with a fallback to plain RAG retrieval summary.
+        const assistantData = await queryAssistantAPI(prompt, uploadedDocument);
+        // Check if assistant found results (retrieved array exists and has items)
+        const hasResults = assistantData && assistantData.retrieved && Array.isArray(assistantData.retrieved) && assistantData.retrieved.length > 0;
+        
+        // Debug logging
+        console.log('Query:', prompt);
+        if (assistantData) {
+          console.log('Assistant API response:', {
+            hasAnswer: !!assistantData.answer,
+            retrievedCount: assistantData.retrieved ? assistantData.retrieved.length : 0,
+            hasResults: hasResults,
+            answerPreview: assistantData.answer ? assistantData.answer.substring(0, 100) : 'no answer'
           });
-          appendMessage(response);
         } else {
-          const healthy = await checkApiStatus();
-          if (!healthy) {
-            appendMessage('❌ Backend API is not reachable.\n\n**Tip:** Start the API server:\n```bash\npython src/leed_rag_api.py\n```\nThen reload this page and try again.');
+          console.log('Assistant API returned null/undefined');
+        }
+        
+        if (assistantData && assistantData.answer && hasResults) {
+          // Main answer (now in natural language format)
+          appendMessage(assistantData.answer);
+
+          // Citations block (now formatted more naturally)
+          if (assistantData.citations && assistantData.citations.trim()) {
+            appendMessage(assistantData.citations);
+          }
+
+          // Optional evidence classifier result (now with natural language explanation)
+          if (assistantData.evidence_classification) {
+            const evidence = assistantData.evidence_classification;
+            let evidenceMessage = "**Evidence Analysis:**\n\n";
+            
+            if (evidence.reason) {
+              evidenceMessage += evidence.reason;
+            } else {
+              // Fallback to decision-based message
+              if (evidence.decision === "supported") {
+                evidenceMessage += `Your evidence appears to support this credit requirement. `;
+                evidenceMessage += `Confidence level: ${(evidence.confidence * 100).toFixed(0)}%.`;
+              } else {
+                evidenceMessage += `Your evidence may need additional details to fully support this credit. `;
+                evidenceMessage += `Confidence level: ${(evidence.confidence * 100).toFixed(0)}%.`;
+              }
+            }
+            
+            appendMessage(evidenceMessage);
+          }
+        } else {
+          // Fallback: plain RAG retrieval summary - ALWAYS use this for reliable results
+          const ragData = await queryRAGAPI(prompt);
+          
+          // Debug logging
+          console.log('RAG API fallback response:', {
+            hasError: !!ragData.error,
+            errorMessage: ragData.error || ragData.message || 'none',
+            resultsCount: ragData.results ? ragData.results.length : 0,
+            query: prompt,
+            resultsPreview: ragData.results ? ragData.results.slice(0, 2).map(r => ({
+              credit: r.metadata?.credit_name || r.metadata?.credit_code || 'unknown',
+              score: r.score,
+              textPreview: r.text?.substring(0, 50) || 'no text'
+            })) : 'no results'
+          });
+          
+          if (ragData && !ragData.error && ragData.results && ragData.results.length > 0) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/2627578b-6952-47f1-bd3c-8617269915d9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:398',message:'displaying results',data:{resultsCount:ragData.results.length,firstResultMetadata:ragData.results[0]?.metadata,firstResultText:ragData.results[0]?.text?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+            // #endregion
+            let response = `I found ${ragData.results.length} relevant result${ragData.results.length > 1 ? 's' : ''} in the LEED knowledge base:\n\n`;
+            ragData.results.forEach((result, index) => {
+              if (index < 5) { // Show up to 5 results
+                // Extract credit info more robustly
+                const metadata = result.metadata || {};
+                let creditCode = metadata.credit_code || metadata.CreditCode || '';
+                let creditName = metadata.credit_name || metadata.CreditName || '';
+                const category = metadata.category || metadata.Category || '';
+                const creditType = metadata.type || metadata.credit_type || metadata.CreditType || 'Credit';
+                
+                // Clean up credit name (remove trailing dots and extra whitespace)
+                if (creditName) {
+                  creditName = creditName.replace(/\.{3,}/g, '').replace(/\s+/g, ' ').trim();
+                  // Remove page numbers at the end (e.g., "Credit Name ........................................................... 12")
+                  creditName = creditName.replace(/\s+\d+\s*$/, '').trim();
+                }
+                
+                // Try to extract from text if metadata is missing
+                const text = result.text || '';
+                if (!creditCode || !creditName || creditCode === 'None') {
+                  // Pattern: "EA Credit: Optimize Energy Performance" or "None Credit: LEED Accredited"
+                  const textMatch = text.match(/^([A-Z]{1,3}|None)\s+(?:Credit|Prerequisite|Prereq)?\s*:?\s*(.+?)(?:\n|\.{3,}|$)/);
+                  if (textMatch) {
+                    if ((!creditCode || creditCode === 'None') && textMatch[1] !== 'None') {
+                      creditCode = textMatch[1];
+                    }
+                    if (!creditName) {
+                      creditName = textMatch[2].replace(/\.{3,}/g, '').replace(/\s+/g, ' ').trim();
+                      creditName = creditName.replace(/\s+\d+\s*$/, '').trim();
+                    }
+                  }
+                  
+                  // Try alternative pattern: "EA Prerequisite: Minimum Energy Performance"
+                  if (!creditCode || creditCode === 'None') {
+                    const altMatch = text.match(/^([A-Z]{1,3})\s+(Prerequisite|Credit|Prereq)/);
+                    if (altMatch) {
+                      creditCode = altMatch[1];
+                    }
+                  }
+                }
+                
+                // Build display name
+                let displayName = '';
+                if (creditCode && creditCode !== 'None' && creditName) {
+                  displayName = `${creditCode}: ${creditName}`;
+                } else if (creditCode && creditCode !== 'None') {
+                  displayName = creditCode;
+                } else if (creditName) {
+                  displayName = creditName;
+                } else if (category) {
+                  displayName = category;
+                } else {
+                  // Extract from text as last resort
+                  const fallbackMatch = text.match(/^([A-Z]{1,3})\s+(?:Credit|Prerequisite|Prereq)?\s*:?\s*(.+?)(?:\n|$)/);
+                  if (fallbackMatch && fallbackMatch[1] !== 'None') {
+                    displayName = `${fallbackMatch[1]}: ${fallbackMatch[2].substring(0, 50).trim()}`;
+                  } else {
+                    displayName = `${creditType} Information`;
+                  }
+                }
+                
+                response += `**${displayName}**\n`;
+                // Clean and display text (remove excessive dots, trim, remove page numbers)
+                let displayText = text.replace(/\.{4,}/g, '...').trim();
+                // Remove trailing page numbers
+                displayText = displayText.replace(/\s+\d+\s*$/, '').trim();
+                displayText = displayText.length > 400 ? displayText.substring(0, 400) + '...' : displayText;
+                if (displayText) {
+                  response += `${displayText}\n\n`;
+                }
+              }
+            });
+            response += 'Would you like more details about any of these credits?';
+            appendMessage(response);
           } else {
-            appendMessage('I couldn\'t find specific information about that. Try asking:\n• "List all LEED credits"\n• "Energy efficiency requirements"\n• "Water efficiency credits"\n• Or upload a document for analysis');
+            const healthy = await checkApiStatus();
+            if (!healthy) {
+              appendMessage('❌ Backend API is not reachable.\n\n**Tip:** Start the API server:\n```bash\npython src/leed_rag_api.py\n```\nThen reload this page and try again.');
+            } else {
+              appendMessage('I couldn\'t find specific information about that in the knowledge base. Let me help you get the information you need. You could try:\n\n• Asking about a specific credit (e.g., "Tell me about EA Optimize Energy Performance")\n• Requesting a list of credits ("List all LEED credits")\n• Asking about categories ("What are the energy efficiency requirements?")\n• Uploading a document for analysis\n\nFeel free to rephrase your question, and I\'ll do my best to help!');
+            }
           }
         }
       }
@@ -357,10 +533,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Store document for analysis
     const reader = new FileReader();
-    reader.onload = () => {
+      reader.onload = () => {
       uploadedDocument = reader.result || '';
       loadingDiv.remove();
-      appendMessage('✅ Document loaded successfully! I can now analyze it. Try asking: "Analyze this document" or "What credits does this document cover?"');
+      appendMessage('Perfect! I\'ve successfully loaded your document. I can now help you analyze it for LEED compliance.\n\n**What would you like to do?**\n• Ask me to "Analyze this document" to see which LEED credits it addresses\n• Ask "What credits does this document cover?" for a summary\n• Ask specific questions about how your document relates to particular LEED credits\n\nFeel free to ask me anything about your document!');
     };
     reader.onerror = () => {
       loadingDiv.remove();

@@ -15,6 +15,7 @@ import pdfplumber
 import fitz  # PyMuPDF
 from PIL import Image
 import io
+import xml.etree.ElementTree as ET
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -255,14 +256,49 @@ class ComprehensivePDFExtractor:
         
         return comprehensive_data
     
+    def _dict_to_xml(self, tag: str, data: Any) -> ET.Element:
+        """
+        Convert a Python dict/list/primitive into an XML Element.
+
+        This is a generic, reasonably robust converter intended for
+        inspection and downstream tooling, not for strict schemas.
+        """
+        elem = ET.Element(tag)
+
+        if isinstance(data, dict):
+            for key, val in data.items():
+                # Sanitize tag names a bit
+                child_tag = str(key).replace(" ", "_") or "item"
+                child = self._dict_to_xml(child_tag, val)
+                elem.append(child)
+        elif isinstance(data, list):
+            for item in data:
+                child = self._dict_to_xml("item", item)
+                elem.append(child)
+        else:
+            # Primitive value
+            elem.text = "" if data is None else str(data)
+
+        return elem
+
     def save_extraction(self, data: Dict[str, Any], pdf_name: str) -> None:
-        """Save extracted data to files."""
+        """Save extracted data to JSON, text, images, tables, and XML."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         # Save comprehensive JSON
         json_file = self.output_dir / f"{pdf_name}_comprehensive_{timestamp}.json"
         with open(json_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+
+        # Save comprehensive XML (best-effort conversion of the same dict)
+        try:
+            root = self._dict_to_xml("extraction", data)
+            tree = ET.ElementTree(root)
+            xml_file = self.output_dir / f"{pdf_name}_comprehensive_{timestamp}.xml"
+            tree.write(xml_file, encoding="utf-8", xml_declaration=True)
+        except Exception as e:
+            logger.warning(f"XML export failed: {e}")
+            xml_file = None
         
         # Save plain text
         text_file = self.output_dir / f"{pdf_name}_text_{timestamp}.txt"
@@ -294,6 +330,8 @@ class ComprehensivePDFExtractor:
         
         logger.info(f"✓ Comprehensive extraction saved:")
         logger.info(f"  → JSON: {json_file}")
+        if 'xml_file' in locals() and xml_file:
+            logger.info(f"  → XML:  {xml_file}")
         logger.info(f"  → Text: {text_file}")
         if data["images"]:
             logger.info(f"  → Images: {images_dir}")
